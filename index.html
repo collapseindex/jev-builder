@@ -61,6 +61,17 @@
       <button type="button" class="act" id="confirm-accept">Continue</button>
     </div>
   </dialog>
+  <dialog id="name-dialog" class="confirm-dialog" aria-labelledby="name-title">
+    <h2 id="name-title">Save as template</h2>
+    <p id="name-message">Saved in this browser only, under Your templates.</p>
+    <label class="sr-only" for="name-input">Template name</label>
+    <input type="text" id="name-input" maxlength="60" autocomplete="off" spellcheck="false" placeholder="Name it" />
+    <p class="hint" id="name-error" role="status"></p>
+    <div class="dialog-actions">
+      <button type="button" class="ghost" id="name-cancel">Cancel</button>
+      <button type="button" class="act" id="name-accept">Save</button>
+    </div>
+  </dialog>
   <dialog id="template-library" class="template-library" aria-labelledby="library-title">
     <header class="library-heading"><div><h2 id="library-title">Template library</h2><p>A starting point for your next question.</p></div><button type="button" class="ghost" id="library-close" aria-label="Close template library">Close</button></header>
     <label class="sr-only" for="library-search">Search templates</label>
@@ -166,15 +177,75 @@
       sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1',
     };
     const LIBRARY_STORE = 'jev-builder:library';
+    const MINE_STORE = 'jev-builder:mine';
+    const MINE_CATEGORY = 'Your templates';
+    const MAX_SAVED = 40;
+    const MAX_SAVED_CHARS = 400000;      // well inside a 5MB localStorage quota
+    let mine = loadSaved();
+    function loadSaved() {
+      try {
+        const rows = JSON.parse(localStorage.getItem(MINE_STORE) || '[]');
+        if (!Array.isArray(rows)) return [];
+        return rows.filter((row) => row && typeof row.id === 'string' && typeof row.title === 'string'
+          && row.model && Array.isArray(row.model.state) && Array.isArray(row.model.questions)).slice(0, MAX_SAVED);
+      } catch { return []; }
+    }
+    function storeSaved() {
+      try {
+        const text = JSON.stringify(mine);
+        if (text.length > MAX_SAVED_CHARS) return 'These templates take more room than this browser will keep. Delete one first.';
+        localStorage.setItem(MINE_STORE, text);
+        return '';
+      } catch { return 'This browser will not store anything, so the template cannot be kept.'; }
+    }
+    function savedEntry(row) {
+      const count = row.model.questions.length;
+      const when = new Date(row.savedAt || Date.now()).toLocaleDateString();
+      return {
+        id: row.id, mine: true, model: row.model, category: MINE_CATEGORY, iconName: 'start',
+        title: row.title, shortTitle: row.title,
+        blurb: `${count} question${count === 1 ? '' : 's'} · saved ${when}`,
+        question: { type: row.model.questions[0]?.type || 'noul' },
+      };
+    }
+    function libraryEntries() { return [...mine.map(savedEntry), ...core.TEMPLATES]; }
+    const nameDialog = document.getElementById('name-dialog');
+    let pendingName = null;
+    function askName(value, accept) {
+      if (nameDialog.open) return;
+      pendingName = { accept, trigger: document.activeElement };
+      const input = document.getElementById('name-input');
+      input.value = value;
+      document.getElementById('name-error').textContent = '';
+      nameDialog.returnValue = '';
+      nameDialog.showModal();
+      input.focus();
+      input.select?.();
+    }
+    document.getElementById('name-cancel').addEventListener('click', () => nameDialog.close('cancel'));
+    document.getElementById('name-accept').addEventListener('click', () => nameDialog.close('accept'));
+    document.getElementById('name-input').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); nameDialog.close('accept'); }
+    });
+    nameDialog.addEventListener('close', () => {
+      const pending = pendingName;
+      pendingName = null;
+      if (!pending) return;
+      if (nameDialog.returnValue === 'accept') pending.accept(document.getElementById('name-input').value.trim());
+      pending.trigger?.isConnected && pending.trigger.focus({ preventScroll: true });
+    });
+
     const LIBRARY_PAGE_SIZE = 8;
     const MAX_SEARCH_LENGTH = 120;
-    const categories = [...new Set(core.TEMPLATES.map((t) => t.category || 'Other'))].sort();
+    const builtInCategories = [...new Set(core.TEMPLATES.map((t) => t.category || 'Other'))].sort();
+    // Your own templates sit at the top of the list, when there are any.
+    const allCategories = () => (mine.length ? [MINE_CATEGORY, ...builtInCategories] : builtInCategories);
     let libraryState = { query: '', category: '', page: 0 };
     try {
       const saved = JSON.parse(localStorage.getItem(LIBRARY_STORE) || 'null');
       if (saved) libraryState = {
         query: typeof saved.query === 'string' ? saved.query.slice(0, MAX_SEARCH_LENGTH) : '',
-        category: categories.includes(saved.category) ? saved.category : '',
+        category: [MINE_CATEGORY, ...builtInCategories].includes(saved.category) ? saved.category : '',
         page: Number.isSafeInteger(saved.page) && saved.page >= 0 ? saved.page : 0,
       };
     } catch { /* Use the default library view. */ }
@@ -285,8 +356,25 @@
           const clear = () => { model = freshDraft(); changed(true); };
           if (hasWork()) askConfirmation('Start fresh?', 'Your current text and questions will be cleared.', 'Start blank', clear);
           else clear();
-        } }));
+        } }),
+        el('button', { type: 'button', id: 'template-save', class: 'ghost', text: 'Save as template', onclick: saveAsTemplate }));
     }
+    function saveAsTemplate() {
+      const note = document.getElementById('save-note');
+      if (!hasWork()) { note.textContent = 'Nothing to save yet'; return; }
+      const suggestion = (model.questions[0]?.instructions || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+      askName(suggestion, (title) => {
+        if (!title) { note.textContent = 'A template needs a name'; return; }
+        if (mine.length >= MAX_SAVED) { note.textContent = `Keeping ${MAX_SAVED} templates already: delete one first`; return; }
+        const row = { id: 'mine-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+          title, savedAt: Date.now(), model: JSON.parse(JSON.stringify(model)) };
+        mine = [row, ...mine];
+        const trouble = storeSaved();
+        if (trouble) { mine = mine.filter((entry) => entry.id !== row.id); note.textContent = trouble; return; }
+        note.textContent = `Saved as "${title}"`;
+      });
+    }
+
     const library = document.getElementById('template-library');
     let chosenTemplate = null;
     function openLibrary() {
@@ -302,13 +390,23 @@
       document.getElementById('library-search').focus();
     }
     function templateRow(template) {
-      return el('button', { type: 'button', class: 'template-row', 'data-template-id': template.id, onclick: () => {
+      const row = el('button', { type: 'button', class: 'template-row', 'data-template-id': template.id, onclick: () => {
         chosenTemplate = template;
         library.close();
       } }, icon(template.iconName || template.id), el('span', { class: 'template-copy' },
         el('span', { class: 'template-title', text: template.shortTitle || template.title }),
         el('span', { class: 'template-description', text: template.blurb })),
         el('span', { class: 'template-type', text: core.TYPE_LABELS[template.question.type] }));
+      if (!template.mine) return row;
+      const remove = el('button', { type: 'button', class: 'row-delete', 'data-delete-id': template.id,
+        'aria-label': 'Delete ' + template.title, title: 'Delete this template', text: '×',
+        onclick: () => askConfirmation('Delete this template?', 'It is kept in this browser only, and this cannot be undone.', 'Delete', () => {
+          mine = mine.filter((row) => row.id !== template.id);
+          storeSaved();
+          if (!mine.length && libraryState.category === MINE_CATEGORY) libraryState.category = '';
+          renderLibrary();
+        }) });
+      return el('div', { class: 'template-row-wrap' }, row, remove);
     }
     function libraryMatches(template) {
       if (libraryState.category && (template.category || 'Other') !== libraryState.category) return false;
@@ -316,15 +414,16 @@
       return libraryState.query.toLowerCase().trim().split(/\s+/).every((word) => haystack.includes(word));
     }
     function renderLibrary() {
-      const matches = core.TEMPLATES.filter(libraryMatches);
+      const matches = libraryEntries().filter(libraryMatches);
       const pages = Math.max(1, Math.ceil(matches.length / LIBRARY_PAGE_SIZE));
       libraryState.page = Math.min(libraryState.page, pages - 1);
+      const categories = allCategories();
       document.getElementById('library-categories').replaceChildren(...['', ...categories].map((category) =>
         el('button', { type: 'button', class: libraryState.category === category ? 'on' : '', 'aria-pressed': libraryState.category === category ? 'true' : 'false', text: category || 'All templates', onclick: () => {
           libraryState.category = category; libraryState.page = 0; renderLibrary();
           // Restore keyboard focus after replacing the category buttons.
           const buttons = document.getElementById('library-categories').children;
-          buttons[['', ...categories].indexOf(category)]?.focus();
+          buttons[['', ...allCategories()].indexOf(category)]?.focus();
         } })));
       const page = matches.slice(libraryState.page * LIBRARY_PAGE_SIZE, (libraryState.page + 1) * LIBRARY_PAGE_SIZE);
       const groups = new Map();
@@ -349,7 +448,7 @@
       const template = chosenTemplate;
       chosenTemplate = null;
       if (!template) return;
-      const apply = () => { model = core.fromTemplate(template.id); changed(true); };
+      const apply = () => { model = template.mine ? JSON.parse(JSON.stringify(template.model)) : core.fromTemplate(template.id); changed(true); };
       if (hasWork()) askConfirmation('Use this template?', 'This replaces your current text and questions.', 'Use template', apply);
       else apply();
     });

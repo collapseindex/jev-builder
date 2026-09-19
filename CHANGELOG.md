@@ -2,6 +2,14 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.2.0 (2026-09-19)
+
+### Added
+- Save the current draft as a template: it is listed first in the library under Your templates,
+  reopens the exact draft it was saved from, and can be deleted there (with a confirmation).
+  Saved templates live in this browser only, up to 40 of them, and the page says so when a browser
+  refuses to store them.
+
 ## v1.1.0 (2026-09-19)
 
 ### Changed

@@ -1,6 +1,6 @@
 # jev-builder
 
-**v1.1.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.2.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
 A browser form for building requests to [TypeSafe's Jev](https://typesafe.ai). Pick a template,
 fill in the blanks, and copy a working request: for the Playground, for Python, or for the command
@@ -24,6 +24,8 @@ no framework: one HTML file, one stylesheet, one module.
 - **A live preview** in four shapes: the full JSON request, the Playground's State and Questions
   panes, a Python snippet, and a curl command. Coloured and numbered, with a rough input token
   estimate.
+- **Save your own templates**: keep a draft under Your templates in the library, reopen it later,
+  delete it when you are done. Kept in your browser only, never uploaded.
 - **Draggable splitters**, a charcoal or white theme, and your draft kept in your own browser.
 - **A check file** for [dinostomp](https://github.com/collapseindex/dinostomp), so a question can be
   measured against examples you have labelled before you rely on it.

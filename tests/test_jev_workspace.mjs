@@ -324,3 +324,40 @@ test('the browse button invites until the library has been opened once', () => {
   const returning = workspace(app.stored);
   assert.doesNotMatch(returning.get('template-picker').className, /inviting/);
 });
+
+test('a draft can be saved, reopened and deleted under Your templates', () => {
+  const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
+  const saveAs = (title) => {
+    button(app.get('templates'), 'Save as template').events.click();
+    app.get('name-input').value = title;
+    app.get('name-accept').events.click();
+  };
+  saveAs('My triage');
+  const kept = JSON.parse(app.stored.get('jev-builder:mine'));
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0].title, 'My triage');
+  assert.deepEqual(kept[0].model, JSON.parse(app.stored.get(STORE)));
+  assert.match(app.get('save-note').textContent, /My triage/);
+
+  // A later visit lists it first, under its own category.
+  const back = workspace(app.stored);
+  back.get('template-picker').events.click();
+  const categories = back.get('library-categories').children.map((node) => node.textContent);
+  assert.equal(categories[1], 'Your templates');
+  const row = find(back.get('library-results'), (node) => node.attrs['data-template-id'] === kept[0].id);
+  assert.ok(row, 'the saved template is listed');
+
+  // Opening it restores that draft, whatever is in the editors now.
+  back.get('source-panel');
+  row.events.click();
+  back.get('template-library').events.close();
+  if (back.get('confirm-dialog').open) back.get('confirm-accept').events.click();
+  assert.deepEqual(JSON.parse(back.stored.get(STORE)).questions, kept[0].model.questions);
+
+  // Deleting asks first, then it is gone for good.
+  back.get('template-picker').events.click();
+  find(back.get('library-results'), (node) => node.attrs['data-delete-id'] === kept[0].id).events.click();
+  back.get('confirm-accept').events.click();
+  back.get('confirm-dialog').events.close();
+  assert.deepEqual(JSON.parse(back.stored.get('jev-builder:mine')), []);
+});

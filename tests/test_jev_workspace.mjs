@@ -361,3 +361,42 @@ test('a draft can be saved, reopened and deleted under Your templates', () => {
   back.get('confirm-dialog').events.close();
   assert.deepEqual(JSON.parse(back.stored.get('jev-builder:mine')), []);
 });
+
+test('a pasted response is recorded, summarised and kept per question', () => {
+  const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
+  const key = JSON.parse(app.stored.get(STORE)).questions[0].key;
+  const paste = (noul) => {
+    app.get('eval-paste')?.events?.click?.() ?? app.get('runs-button').events.click();
+    app.get('paste-input').value = JSON.stringify({
+      model: 'jev-1.13.0', answers: { [key]: { type: 'noul', noul } },
+      usage: { input_tokens: 300, output_tokens: 23 },
+    });
+    app.get('paste-accept').events.click();
+  };
+  app.get('runs-button').events.click();
+  app.get('eval-paste').events.click();
+  paste(0.95);
+  paste(0.88);
+  paste(0.41);
+
+  const stored = JSON.parse(app.stored.get('jev-builder:runs'));
+  assert.equal(stored.length, 3);
+  assert.deepEqual(stored.map((run) => run.answer), ['yes', 'yes', 'no']);
+  assert.equal(stored[0].key, key);
+  assert.equal(stored[0].inputTokens, 300);
+
+  // The panel names the question and counts its runs.
+  assert.match(app.get('eval-title').textContent, new RegExp(key));
+  const stats = app.get('eval-stats').children.map((cell) => cell.children.map((part) => part.textContent));
+  const value = (label) => stats.find(([name]) => name === label)?.[1];
+  assert.equal(value('runs'), '3');
+  assert.equal(value('most common'), 'yes');
+  assert.equal(value('agreement'), '67%');
+  assert.equal(value('tokens in'), '900');
+
+  // Clearing asks first, and only empties this question.
+  app.get('eval-clear').events.click();
+  app.get('confirm-accept').events.click();
+  app.get('confirm-dialog').events.close();
+  assert.deepEqual(JSON.parse(app.stored.get('jev-builder:runs')), []);
+});

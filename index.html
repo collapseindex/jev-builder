@@ -47,7 +47,7 @@
       </div>
       <div class="splitter splitter-col" id="split-columns" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize the editors and preview" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50"></div>
       <section class="preview-panel" aria-label="Live request preview">
-        <div class="panel-heading"><h2>Request preview</h2><span id="preview-help"></span><span class="token-count" id="token-count"></span><label class="sr-only" for="output-format">Output format</label><select id="output-format" aria-describedby="preview-note"></select></div>
+        <div class="panel-heading"><h2>Request preview</h2><span id="preview-help"></span><span class="token-count" id="token-count"></span><button type="button" class="ghost" id="runs-button" title="Runs recorded in this browser">Runs</button><button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button><label class="sr-only" for="output-format">Output format</label><select id="output-format" aria-describedby="preview-note"></select></div>
         <p class="sr-only" id="preview-note"></p>
         <div id="preview-output"></div>
       </section>
@@ -70,6 +70,37 @@
     <div class="dialog-actions">
       <button type="button" class="ghost" id="name-cancel">Cancel</button>
       <button type="button" class="act" id="name-accept">Save</button>
+    </div>
+  </dialog>
+  <dialog id="paste-dialog" class="confirm-dialog paste-dialog" aria-labelledby="paste-title">
+    <h2 id="paste-title">Paste a response</h2>
+    <p>Run the request anywhere, in the Playground or with dinostomp, and paste what Jev answered. It is read here and kept with your other runs.</p>
+    <label class="sr-only" for="paste-input">Response JSON</label>
+    <textarea id="paste-input" spellcheck="false" placeholder='{"model":"jev-1.13.0","answers":{...},"usage":{...}}'></textarea>
+    <p class="hint" id="paste-error" role="status"></p>
+    <div class="dialog-actions">
+      <button type="button" class="ghost" id="paste-cancel">Cancel</button>
+      <button type="button" class="act" id="paste-accept">Record it</button>
+    </div>
+  </dialog>
+  <dialog id="eval-panel" class="eval-panel" aria-labelledby="eval-title">
+    <header class="eval-heading">
+      <div><h2 id="eval-title">Runs</h2><p class="eval-sub" id="eval-meta"></p></div>
+      <div class="eval-actions">
+        <button type="button" class="ghost" id="eval-paste">Paste a response</button>
+        <button type="button" class="ghost" id="eval-png">Save PNG</button>
+        <button type="button" class="ghost danger" id="eval-clear">Clear history</button>
+        <button type="button" class="ghost" id="eval-close">Close</button>
+      </div>
+    </header>
+    <div class="eval-body">
+      <nav id="eval-questions" class="eval-questions" aria-label="Questions with runs"></nav>
+      <div class="eval-main">
+        <div id="eval-latest" class="eval-latest"></div>
+        <div id="eval-stats" class="eval-stats"></div>
+        <div class="eval-chart-box"><canvas id="eval-chart" class="eval-chart" role="img" aria-label="Trend of this question's runs"></canvas></div>
+        <div id="eval-history" class="eval-history"></div>
+      </div>
     </div>
   </dialog>
   <dialog id="template-library" class="template-library" aria-labelledby="library-title">
@@ -693,6 +724,381 @@
     setupSplitter(document.getElementById('split-columns'), document.getElementById('workspace-grid'), 'columns', true);
     setupSplitter(document.getElementById('split-rows'), document.getElementById('editors'), 'rows', false);
     applyLayout();
+
+    // --- runs, and the panel that studies them -----------------------------------
+    // Jev's API refuses cross-origin browser calls, so Run only works when this
+    // page is served by its own runner (npm start with a key). Everywhere else a
+    // response is pasted in, and both land in the same history.
+    const text = (value) => (value == null ? '' : String(value));
+    const RUNS_STORE = 'jev-builder:runs';
+    const MAX_RUNS_CHARS = 600000;
+    let runs = loadRuns();
+    let runner = { checked: false, runner: false, keyed: false };
+    let evalKey = '';
+
+    function loadRuns() {
+      try {
+        const rows = JSON.parse(localStorage.getItem(RUNS_STORE) || '[]');
+        return Array.isArray(rows) ? rows.filter((row) => row && typeof row.key === 'string' && row.answer != null) : [];
+      } catch { return []; }
+    }
+    function storeRuns() {
+      runs = runs.slice(-core.RUN_LIMIT);
+      try {
+        const text = JSON.stringify(runs);
+        if (text.length > MAX_RUNS_CHARS) runs = runs.slice(-Math.floor(core.RUN_LIMIT / 2));
+        localStorage.setItem(RUNS_STORE, JSON.stringify(runs));
+      } catch { /* The history stays in this tab only. */ }
+    }
+    function runsFor(key) { return runs.filter((run) => run.key === key); }
+    function runKeys() { return [...new Set(runs.map((run) => run.key))]; }
+
+    /** Take a Jev response apart into one row per question it answered. */
+    function recordResponse(data, ms, source) {
+      const added = [];
+      for (const q of model.questions) {
+        const key = text(q.key).trim();
+        if (!key) continue;
+        const answer = core.readAnswer(data, key, q);
+        if (!answer) continue;
+        const entry = data?.answers?.[key] || {};
+        added.push({
+          id: 'run-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+          at: Date.now(), key, question: text(q.instructions).slice(0, 200), source,
+          ms: Number.isFinite(ms) ? Math.round(ms) : null,
+          inputTokens: Number(data?.usage?.input_tokens) || 0,
+          outputTokens: Number(data?.usage?.output_tokens) || 0,
+          jev: text(data?.model || ''),
+          legend: entry.legend && typeof entry.legend === 'object' ? entry.legend : null,
+          ...answer,
+        });
+      }
+      if (added.length) { runs = [...runs, ...added]; storeRuns(); }
+      return added;
+    }
+
+    function note(message) { document.getElementById('save-note').textContent = message; }
+
+    async function checkRunner() {
+      try {
+        const answer = await fetch('api/ready', { headers: { accept: 'application/json' } });
+        if (!answer.ok) throw new Error('no runner here');
+        const state = await answer.json();
+        runner = { checked: true, runner: Boolean(state.runner), keyed: Boolean(state.keyed) };
+      } catch {
+        runner = { checked: true, runner: false, keyed: false };
+      }
+      renderRunButton();
+    }
+    function renderRunButton() {
+      const button = document.getElementById('run-button');
+      if (!button) return;
+      button.disabled = false;
+      button.textContent = 'Run';
+      button.title = runner.runner && runner.keyed
+        ? 'Send this request to Jev through your own runner'
+        : 'Running needs the local runner: npm start with TYPESAFE_API_KEY';
+    }
+
+    async function runNow() {
+      const button = document.getElementById('run-button');
+      const issues = core.problems(model);
+      if (issues.length) { note(`Finish the request first: ${issues[0]}`); return; }
+      if (!runner.runner || !runner.keyed) { showRunHelp(); return; }
+      button.disabled = true;
+      button.textContent = 'Running';
+      try {
+        const answer = await fetch('api/run', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(core.requestBody(model)),
+        });
+        const payload = await answer.json().catch(() => ({}));
+        if (!answer.ok) throw new Error(payload.error || `the runner answered ${answer.status}`);
+        const added = recordResponse(payload.data, payload.ms, 'run');
+        if (!added.length) throw new Error('Jev answered, but not for these question names');
+        note(`Ran in ${payload.ms} ms`);
+        openEval(added[0].key);
+      } catch (error) {
+        note(error.message);
+      } finally {
+        renderRunButton();
+      }
+    }
+
+    function showRunHelp() {
+      askConfirmation(
+        'Running happens on your machine',
+        "Jev's API refuses requests from web pages, so this page cannot call it. Clone the repo and run "
+        + '`npm start` with TYPESAFE_API_KEY set, and Run works here with your key never leaving your computer. '
+        + 'Or run it anywhere you like and paste the response back.',
+        'Paste a response', () => pasteResponse());
+    }
+
+    const pasteDialog = document.getElementById('paste-dialog');
+    function pasteResponse() {
+      if (pasteDialog.open) return;
+      document.getElementById('paste-input').value = '';
+      document.getElementById('paste-error').textContent = '';
+      pasteDialog.returnValue = '';
+      pasteDialog.showModal();
+      document.getElementById('paste-input').focus();
+    }
+    document.getElementById('paste-cancel').addEventListener('click', () => pasteDialog.close('cancel'));
+    document.getElementById('paste-accept').addEventListener('click', () => {
+      const field = document.getElementById('paste-input');
+      const problem = document.getElementById('paste-error');
+      let data;
+      try {
+        data = JSON.parse(field.value);
+      } catch (error) {
+        problem.textContent = 'That is not JSON: ' + error.message;
+        return;
+      }
+      const added = recordResponse(data?.data ?? data, Number(data?.evaluation_time_ms) || null, 'pasted');
+      if (!added.length) {
+        problem.textContent = 'No answers here for these question names. Check the names match your request.';
+        return;
+      }
+      pasteDialog.close('accept');
+      note(`Recorded ${added.length} answer${added.length === 1 ? '' : 's'}`);
+      openEval(added[0].key);
+    });
+
+    // --- the eval panel ----------------------------------------------------------
+    const evalPanel = document.getElementById('eval-panel');
+    function openEval(key) {
+      const keys = runKeys();
+      evalKey = keys.includes(key) ? key : (keys[0] || '');
+      renderEval();
+      if (!evalPanel.open) evalPanel.showModal();
+    }
+    function fmt(value, digits = 2) { return value == null || !Number.isFinite(value) ? '—' : value.toFixed(digits); }
+    function percent(value) { return value == null || !Number.isFinite(value) ? '—' : Math.round(value * 100) + '%'; }
+    function labelFor(run, name) {
+      const label = run.legend?.[name];
+      return label ? `${name} · ${text(label).slice(0, 60)}` : name;
+    }
+
+    function renderEval() {
+      const keys = runKeys();
+      document.getElementById('eval-questions').replaceChildren(...keys.map((key) => {
+        const count = runsFor(key).length;
+        return el('button', { type: 'button', class: key === evalKey ? 'on' : '', onclick: () => { evalKey = key; renderEval(); } },
+          el('span', { class: 'navlabel', text: key }), el('span', { class: 'badge', text: String(count) }));
+      }));
+      const rows = runsFor(evalKey);
+      const stats = core.summariseRuns(rows);
+      const latest = rows[rows.length - 1];
+      document.getElementById('eval-title').textContent = evalKey ? `Runs · ${evalKey}` : 'Runs';
+      document.getElementById('eval-meta').textContent = latest
+        ? `${latest.jev || 'jev'} · last run ${new Date(latest.at).toLocaleString()}`
+        : '';
+
+      const latestBox = document.getElementById('eval-latest');
+      if (!latest) {
+        latestBox.replaceChildren(el('p', { class: 'eval-empty', text: 'No runs yet. Run the request, or paste a response, and its history appears here.' }));
+        document.getElementById('eval-stats').replaceChildren();
+        document.getElementById('eval-history').replaceChildren();
+        drawChart([]);
+        return;
+      }
+      const entries = Object.entries(latest.distribution || {});
+      latestBox.replaceChildren(
+        el('p', { class: 'eval-question', text: latest.question || evalKey }),
+        el('p', { class: 'eval-answer' },
+          el('strong', { text: latest.type === 'score' ? fmt(latest.value) : latest.answer }),
+          el('span', { class: 'eval-sub', text: latest.type === 'score' ? ` of ${Math.max(0, entries.length - 1)}` : ` at ${percent(latest.p)}` })),
+        ...entries.map(([name, value]) => el('div', { class: 'eval-bar' },
+          el('span', { class: 'eval-bar-label', text: labelFor(latest, name) }),
+          el('span', { class: 'eval-bar-track' }, el('span', { class: 'eval-bar-fill', style: `width:${Math.max(0, Math.min(1, value)) * 100}%` })),
+          el('span', { class: 'eval-bar-value', text: percent(value) }))),
+        el('p', { class: 'eval-sub', text: `confidence ${percent(latest.confidence)} · ${latest.ms == null ? '—' : latest.ms + ' ms'} · ${latest.inputTokens} in / ${latest.outputTokens} out · ${latest.source}` }));
+
+      const cost = core.estimateCost(stats.inputTokens);
+      const cells = [
+        ['runs', String(stats.n)],
+        ['most common', stats.modal ?? '—'],
+        ['agreement', percent(stats.agreement)],
+        ['mean', fmt(stats.mean)],
+        ['sd', fmt(stats.sd, 3)],
+        ['spread', `${fmt(stats.min)} to ${fmt(stats.max)}`],
+        ['confidence', percent(stats.meanConfidence)],
+        ['latency', stats.meanMs == null ? '—' : Math.round(stats.meanMs) + ' ms'],
+        ['tokens in', stats.inputTokens.toLocaleString()],
+        ['est. cost', '$' + cost.toFixed(cost >= 0.01 ? 2 : 5)],
+      ];
+      document.getElementById('eval-stats').replaceChildren(...cells.map(([label, value]) =>
+        el('div', { class: 'eval-stat' }, el('span', { class: 'eval-stat-label', text: label }), el('span', { class: 'eval-stat-value', text: value }))));
+
+      document.getElementById('eval-history').replaceChildren(
+        el('table', { class: 'eval-table' },
+          el('thead', {}, el('tr', {}, ...['when', 'answer', 'p', 'conf', 'ms', 'tokens', 'from'].map((head) => el('th', { text: head })))),
+          el('tbody', {}, ...rows.slice().reverse().slice(0, 50).map((run) => el('tr', {},
+            el('td', { text: new Date(run.at).toLocaleTimeString() }),
+            el('td', { text: run.type === 'score' ? fmt(run.value) : run.answer }),
+            el('td', { text: percent(run.p) }),
+            el('td', { text: percent(run.confidence) }),
+            el('td', { text: run.ms == null ? '—' : String(run.ms) }),
+            el('td', { text: String((run.inputTokens || 0) + (run.outputTokens || 0)) }),
+            el('td', { text: run.source }))))));
+      drawChart(rows);
+    }
+
+    /**
+     * The trendline: each run in order, with the mean and a one standard
+     * deviation band behind it, drawn into a rectangle so the panel and the
+     * PNG can share one painter.
+     */
+    function paintChart(context, rect, rows, options = {}) {
+      const style = getComputedStyle(document.documentElement);
+      const colour = (name, fallback) => (style.getPropertyValue(name) || fallback).trim() || fallback;
+      const pad = { left: 46, right: 16, top: 14, bottom: 26 };
+      context.save();
+      context.translate(rect.x, rect.y);
+      context.fillStyle = options.background || colour('--code-bg', '#161618');
+      context.fillRect(0, 0, rect.width, rect.height);
+      const stats = core.summariseRuns(rows);
+      const series = stats.series;
+      const top = Math.max(1, ...series, 1);
+      const plotWidth = rect.width - pad.left - pad.right;
+      const plotHeight = rect.height - pad.top - pad.bottom;
+      const x = (i) => pad.left + (series.length < 2 ? plotWidth / 2 : (i / (series.length - 1)) * plotWidth);
+      const y = (value) => pad.top + plotHeight - (Math.max(0, Math.min(top, value)) / top) * plotHeight;
+
+      context.lineWidth = 1;
+      context.font = '11px ui-monospace, Consolas, monospace';
+      for (let step = 0; step <= 4; step += 1) {
+        const value = (top / 4) * step;
+        const at = Math.round(y(value)) + 0.5;
+        context.strokeStyle = colour('--rule', '#38383d');
+        context.beginPath();
+        context.moveTo(pad.left, at);
+        context.lineTo(rect.width - pad.right, at);
+        context.stroke();
+        context.fillStyle = colour('--muted', '#a3a3ac');
+        context.fillText(value.toFixed(2), 8, at + 4);
+      }
+      if (series.length) {
+        if (series.length > 1 && stats.sd > 0) {
+          context.fillStyle = colour('--tint', '#303036');
+          const high = y(stats.mean + stats.sd);
+          const low = y(stats.mean - stats.sd);
+          context.fillRect(pad.left, high, plotWidth, Math.max(1, low - high));
+        }
+        context.strokeStyle = colour('--muted', '#a3a3ac');
+        context.setLineDash([4, 4]);
+        context.beginPath();
+        context.moveTo(pad.left, y(stats.mean));
+        context.lineTo(rect.width - pad.right, y(stats.mean));
+        context.stroke();
+        context.setLineDash([]);
+
+        context.strokeStyle = options.line || colour('--accent', '#e9e9ee');
+        context.lineWidth = 2;
+        context.beginPath();
+        series.forEach((value, index) => (index ? context.lineTo(x(index), y(value)) : context.moveTo(x(index), y(value))));
+        context.stroke();
+        context.fillStyle = options.line || colour('--accent', '#e9e9ee');
+        series.forEach((value, index) => {
+          context.beginPath();
+          context.arc(x(index), y(value), 3, 0, Math.PI * 2);
+          context.fill();
+        });
+        context.fillStyle = colour('--muted', '#a3a3ac');
+        context.fillText('run 1', pad.left, rect.height - 8);
+        const last = `run ${series.length}`;
+        context.fillText(last, rect.width - pad.right - context.measureText(last).width, rect.height - 8);
+      }
+      context.restore();
+    }
+
+    function drawChart(rows) {
+      const canvas = document.getElementById('eval-chart');
+      const context = canvas?.getContext?.('2d');
+      if (!context) return;                        // no canvas: the numbers still show
+      const width = Math.max(320, Math.round(canvas.parentElement?.getBoundingClientRect?.().width || 720));
+      const height = 260;
+      const scale = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      canvas.style.width = '100%';
+      canvas.style.height = height + 'px';
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+      paintChart(context, { x: 0, y: 0, width, height }, rows);
+    }
+
+    /** A shareable card: the same chart with the numbers written beside it. */
+    function saveChartPng() {
+      const rows = runsFor(evalKey);
+      if (!rows.length) { note('Nothing to save yet'); return; }
+      const stats = core.summariseRuns(rows);
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 720;
+      const context = canvas.getContext?.('2d');
+      if (!context) { note('This browser cannot write the image'); return; }
+      const style = getComputedStyle(document.documentElement);
+      const colour = (name, fallback) => (style.getPropertyValue(name) || fallback).trim() || fallback;
+      const ink = colour('--text', '#f2f2f4');
+      const muted = colour('--muted', '#a3a3ac');
+      context.fillStyle = colour('--bg', '#1c1c1e');
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = ink;
+      context.font = '600 26px ui-sans-serif, system-ui, sans-serif';
+      context.fillText(evalKey, 40, 54);
+      context.fillStyle = muted;
+      context.font = '15px ui-sans-serif, system-ui, sans-serif';
+      const latest = rows[rows.length - 1];
+      context.fillText((latest.question || '').slice(0, 96), 40, 82);
+      context.fillText(`${rows.length} run${rows.length === 1 ? '' : 's'} · ${latest.jev || 'jev'} · ${new Date(latest.at).toLocaleString()}`, 40, 106);
+
+      // The chart sits on its own surface, the numbers under it.
+      paintChart(context, { x: 40, y: 130, width: 1120, height: 360 }, rows);
+
+      const cost = core.estimateCost(stats.inputTokens);
+      const cells = [
+        ['most common', String(stats.modal ?? '—')], ['agreement', percent(stats.agreement)],
+        ['mean', fmt(stats.mean)], ['sd', fmt(stats.sd, 3)],
+        ['spread', `${fmt(stats.min)}–${fmt(stats.max)}`], ['confidence', percent(stats.meanConfidence)],
+        ['latency', stats.meanMs == null ? '—' : Math.round(stats.meanMs) + ' ms'],
+        ['tokens in', stats.inputTokens.toLocaleString()],
+        ['est. cost', '$' + cost.toFixed(cost >= 0.01 ? 2 : 5)],
+      ];
+      cells.forEach(([label, value], index) => {
+        const left = 40 + (index % 5) * 228;
+        const top = 560 + Math.floor(index / 5) * 74;
+        context.fillStyle = muted;
+        context.font = '600 12px ui-sans-serif, system-ui, sans-serif';
+        context.fillText(label.toUpperCase(), left, top);
+        context.fillStyle = ink;
+        context.font = '22px ui-sans-serif, system-ui, sans-serif';
+        context.fillText(value, left, top + 28);
+      });
+      context.fillStyle = muted;
+      context.font = '13px ui-sans-serif, system-ui, sans-serif';
+      context.fillText('collapseindex.github.io/jev-builder', 40, canvas.height - 24);
+
+      const link = el('a', { href: canvas.toDataURL('image/png'), download: `${evalKey || 'runs'}-${new Date().toISOString().slice(0, 10)}.png` });
+      document.body.append(link);
+      link.click();
+      link.remove();
+      note('Saved the image');
+    }
+
+    document.getElementById('run-button').addEventListener('click', runNow);
+    document.getElementById('runs-button').addEventListener('click', () => openEval(model.questions[0]?.key || ''));
+    document.getElementById('eval-close').addEventListener('click', () => evalPanel.close());
+    document.getElementById('eval-png').addEventListener('click', saveChartPng);
+    document.getElementById('eval-paste').addEventListener('click', () => pasteResponse());
+    document.getElementById('eval-clear').addEventListener('click', () => askConfirmation(
+      'Clear the runs for this question?', 'Only ' + (evalKey || 'this question') + ' is cleared, and this cannot be undone.', 'Clear', () => {
+        runs = runs.filter((run) => run.key !== evalKey);
+        storeRuns();
+        evalKey = runKeys()[0] || '';
+        renderEval();
+      }));
+    window.addEventListener('resize', () => { if (evalPanel.open) drawChart(runsFor(evalKey)); });
+    checkRunner();
 
   </script>
 </body>

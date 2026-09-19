@@ -1,6 +1,6 @@
 # jev-builder
 
-**v1.2.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.3.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
 A browser form for building requests to [TypeSafe's Jev](https://typesafe.ai). Pick a template,
 fill in the blanks, and copy a working request: for the Playground, for Python, or for the command
@@ -27,6 +27,9 @@ no framework: one HTML file, one stylesheet, one module.
 - **Save your own templates**: keep a draft under Your templates in the library, reopen it later,
   delete it when you are done. Kept in your browser only, never uploaded.
 - **Draggable splitters**, a charcoal or white theme, and your draft kept in your own browser.
+- **Run it and keep the runs**: Run sends the request through your own local runner, and the eval
+  panel keeps every run per question with distribution bars, agreement, mean, standard deviation,
+  spread, confidence, latency, tokens, an estimated cost, a trendline and a Save PNG button.
 - **A check file** for [dinostomp](https://github.com/collapseindex/dinostomp), so a question can be
   measured against examples you have labelled before you rely on it.
 
@@ -44,6 +47,28 @@ npm start            # http://localhost:4321
 
 `npm start` is a 40-line static file server with no dependencies; any other static server works too.
 Opening `index.html` straight from disk does not, because browsers refuse ES modules over `file://`.
+
+## Running a request
+
+Jev's API refuses cross-origin browser requests, so no web page can call it, whatever it does with
+your key. Running therefore happens on your own machine:
+
+```bash
+git clone https://github.com/collapseindex/jev-builder.git
+cd jev-builder
+TYPESAFE_API_KEY=... npm start        # or put the key in a .env beside the repo
+```
+
+`npm start` then serves the page and answers its `Run` button by forwarding the request to Jev with
+your key. The key is read from the environment, never from the page, never sent to the page and
+never logged, and the runner listens on the loopback address only.
+
+On the hosted page, Run explains this and offers **Paste a response** instead: run the request
+wherever you like (the Playground, dinostomp, curl), paste back what Jev answered, and it is
+recorded with the same statistics.
+
+Every run is kept in your browser's local storage, up to 200 of them, and can be cleared per
+question in the panel.
 
 ## Your key
 

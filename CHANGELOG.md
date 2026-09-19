@@ -2,6 +2,19 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.3.0 (2026-09-19)
+
+### Added
+- Run: a local runner in `npm start` forwards the request to Jev with a key from your environment,
+  because the API refuses cross-origin browser calls. The key never touches the page, and the
+  runner binds to loopback, rate limits itself and caps the body size.
+- Paste a response: the same history from a run made anywhere else.
+- The eval panel: per question, the latest answer with its distribution, runs, most common answer,
+  agreement, mean, standard deviation, spread, mean confidence, latency, tokens and estimated cost,
+  a trendline with a one standard deviation band, a run table, Save PNG, and Clear history.
+- `readAnswer`, `summariseRuns` and `estimateCost` in the core module, covering noul, choice and
+  score responses.
+
 ## v1.2.0 (2026-09-19)
 
 ### Added

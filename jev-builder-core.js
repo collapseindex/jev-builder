@@ -1220,3 +1220,92 @@ export function tokenizeLine(line, language = "json") {
 export function highlight(text, language = "json") {
   return text.split("\n").map((line) => tokenizeLine(line, language));
 }
+
+/**
+ * Runs: reading a Jev response, and the statistics over a question's history.
+ *
+ * A response carries one entry per question. `noul` gives the probability of
+ * true, `choice` gives a name with a probability for each option, `score`
+ * gives a position on the scale with a probability for each level. All three
+ * are read into the same record so the history can be counted the same way.
+ */
+export const RUN_LIMIT = 200;
+
+function numberOr(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** One question's answer, or null when the response does not carry it. */
+export function readAnswer(response, key, question) {
+  const answers = response?.answers;
+  if (!answers || typeof answers !== "object") return null;
+  const entry = answers[key] ?? (Object.keys(answers).length === 1 ? Object.values(answers)[0] : null);
+  if (!entry || typeof entry !== "object") return null;
+  const type = str(entry.type || question?.type || "");
+  const confidence = entry.confidence == null ? null : numberOr(entry.confidence, null);
+  if (type === "noul" || entry.noul != null) {
+    const p = numberOr(entry.noul, null);
+    if (p == null) return null;
+    const labels = TRUE_FALSE;
+    return { type: "noul", answer: p >= 0.5 ? labels[0] : labels[1], p: p >= 0.5 ? p : 1 - p,
+             value: p, distribution: { [labels[0]]: p, [labels[1]]: 1 - p }, confidence };
+  }
+  if (type === "choice" || entry.choice != null) {
+    const answer = str(entry.choice);
+    const distribution = {};
+    for (const [name, value] of Object.entries(entry.probabilities || {})) distribution[str(name)] = numberOr(value, 0);
+    return { type: "choice", answer, p: numberOr(distribution[answer], null) ?? numberOr(entry.confidence, 0),
+             value: null, distribution, confidence };
+  }
+  if (type === "score" || entry.score != null) {
+    const value = numberOr(entry.score, null);
+    if (value == null) return null;
+    const raw = entry.probabilities ?? entry.distribution ?? [];
+    const levels = Array.isArray(raw) ? raw.map((v, i) => [String(i), numberOr(v, 0)]) : Object.entries(raw).map(([k, v]) => [str(k), numberOr(v, 0)]);
+    const distribution = Object.fromEntries(levels);
+    const top = levels.slice().sort((a, b) => b[1] - a[1])[0];
+    return { type: "score", answer: top ? top[0] : String(Math.round(value)), p: top ? top[1] : null,
+             value, distribution, confidence };
+  }
+  return null;
+}
+
+const TRUE_FALSE = ["yes", "no"];
+
+/** Everything the eval panel shows about one question's runs, oldest first. */
+export function summariseRuns(runs) {
+  const rows = (runs || []).filter((run) => run && run.answer != null);
+  const n = rows.length;
+  const empty = { n: 0, counts: {}, modal: null, agreement: null, mean: null, sd: null, min: null, max: null,
+                  range: null, meanConfidence: null, meanMs: null, inputTokens: 0, outputTokens: 0, series: [] };
+  if (!n) return empty;
+  const counts = {};
+  for (const run of rows) counts[run.answer] = (counts[run.answer] || 0) + 1;
+  const modal = Object.entries(counts).sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))[0][0];
+  // The series is what the trendline draws: a score's position, or the
+  // probability behind whichever way the answer went.
+  const series = rows.map((run) => (run.type === "score" && run.value != null ? run.value : numberOr(run.p, 0)));
+  const mean = series.reduce((sum, value) => sum + value, 0) / n;
+  // Sample standard deviation: with one run there is no spread to report.
+  const sd = n > 1 ? Math.sqrt(series.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (n - 1)) : 0;
+  const confidences = rows.map((run) => run.confidence).filter((value) => Number.isFinite(value));
+  const times = rows.map((run) => run.ms).filter((value) => Number.isFinite(value));
+  return {
+    n, counts, modal,
+    agreement: counts[modal] / n,
+    mean, sd,
+    min: Math.min(...series), max: Math.max(...series), range: Math.max(...series) - Math.min(...series),
+    meanConfidence: confidences.length ? confidences.reduce((a, b) => a + b, 0) / confidences.length : null,
+    meanMs: times.length ? times.reduce((a, b) => a + b, 0) / times.length : null,
+    inputTokens: rows.reduce((sum, run) => sum + (Number(run.inputTokens) || 0), 0),
+    outputTokens: rows.reduce((sum, run) => sum + (Number(run.outputTokens) || 0), 0),
+    series,
+  };
+}
+
+/** Jev's published price for input tokens, so a long state's cost is visible. */
+export const USD_PER_MILLION_INPUT_TOKENS = 0.042;
+export function estimateCost(inputTokens) {
+  return (Number(inputTokens) || 0) * USD_PER_MILLION_INPUT_TOKENS / 1e6;
+}

@@ -32,9 +32,13 @@
   <div class="top">
     <a href="https://collapseindex.org" class="wordmark">collapseindex<span>labs</span></a>
     <span class="top-label">Tools <span aria-hidden="true">/</span> Jev builder</span>
-    <div class="template-bar" id="templates"></div>
     <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch color theme">Theme</button>
   </div>
+  <div class="shell">
+  <aside class="rail" id="rail" aria-label="Actions">
+    <button type="button" class="rail-toggle" id="rail-toggle" aria-expanded="true" aria-controls="templates" title="Collapse the actions"><span class="rail-chevron" aria-hidden="true">«</span><span class="rail-label">Actions</span></button>
+    <div class="template-bar" id="templates"></div>
+  </aside>
   <main class="workspace" id="main" tabindex="-1">
     <h1 class="sr-only">Jev workspace</h1>
     <div class="workspace-grid" id="workspace-grid">
@@ -57,6 +61,7 @@
       <p class="save-note" id="save-note" role="status">Draft stays in this browser</p>
     </div>
   </main>
+  </div>
   <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
     <h2 id="confirm-title"></h2>
     <p id="confirm-message"></p>
@@ -385,14 +390,17 @@
     let seenLibrary = true;
     try { seenLibrary = localStorage.getItem(SEEN_STORE) === 'yes'; } catch { /* No storage: leave it quiet. */ }
     function renderTemplates() {
-      const picker = el('button', { type: 'button', id: 'template-picker', class: 'ghost template-picker' + (seenLibrary ? '' : ' inviting'), 'aria-haspopup': 'dialog', 'aria-controls': 'template-library', onclick: openLibrary }, icon('start'), el('span', { text: 'Browse templates' }));
+      const action = (props, name, label) => el('button', { type: 'button', class: 'ghost rail-button', title: label, ...props },
+        icon(name), el('span', { class: 'rail-label', text: label }));
+      const picker = action({ id: 'template-picker', class: 'ghost rail-button' + (seenLibrary ? '' : ' inviting'),
+        'aria-haspopup': 'dialog', 'aria-controls': 'template-library', onclick: openLibrary }, 'start', 'Browse templates');
       document.getElementById('templates').replaceChildren(picker,
-        el('button', { type: 'button', class: 'ghost', text: 'Start blank', onclick: () => {
+        action({ onclick: () => {
           const clear = () => { model = freshDraft(); changed(true); };
           if (hasWork()) askConfirmation('Start fresh?', 'Your current text and questions will be cleared.', 'Start blank', clear);
           else clear();
-        } }),
-        el('button', { type: 'button', id: 'template-save', class: 'ghost', text: 'Save as template', onclick: saveAsTemplate }));
+        } }, 'plus', 'Start blank'),
+        action({ id: 'template-save', onclick: saveAsTemplate }, 'text', 'Save as template'));
     }
     function saveAsTemplate() {
       const note = document.getElementById('save-note');
@@ -1106,6 +1114,22 @@
       }));
     window.addEventListener('resize', () => { if (evalPanel.open) drawChart(runsFor(evalKey)); });
     checkRunner();
+
+    // The rail collapses to its icons, and stays that way per browser.
+    const RAIL_STORE = 'jev-builder:rail';
+    const rail = document.getElementById('rail');
+    const railToggle = document.getElementById('rail-toggle');
+    function setRail(open) {
+      rail.classList.toggle('closed', !open);
+      railToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      railToggle.title = open ? 'Collapse the actions' : 'Expand the actions';
+      railToggle.querySelector?.('.rail-chevron') && (railToggle.querySelector('.rail-chevron').textContent = open ? '\u00ab' : '\u00bb');
+      try { localStorage.setItem(RAIL_STORE, open ? 'open' : 'closed'); } catch { /* Nothing to remember it with. */ }
+    }
+    let railOpen = true;
+    try { railOpen = localStorage.getItem(RAIL_STORE) !== 'closed'; } catch { /* Keep it open. */ }
+    railToggle.addEventListener('click', () => setRail(rail.classList.contains('closed')));
+    setRail(railOpen);
 
   </script>
 </body>

@@ -13,7 +13,13 @@ class Element {
     this.events = {};
     this.dataset = {};
     this.style = { values: {}, setProperty(name, value) { this.values[name] = value; } };
-    this.classList = { names: new Set(), add(name) { this.names.add(name); }, remove(name) { this.names.delete(name); }, contains(name) { return this.names.has(name); } };
+    this.classList = {
+      names: new Set(),
+      add(name) { this.names.add(name); },
+      remove(name) { this.names.delete(name); },
+      contains(name) { return this.names.has(name); },
+      toggle(name, force) { const on = force === undefined ? !this.names.has(name) : Boolean(force); if (on) this.names.add(name); else this.names.delete(name); return on; },
+    };
     this.offsetWidth = 280;
     this.offsetHeight = 90;
     this.value = '';
@@ -28,6 +34,7 @@ class Element {
   replaceChildren(...children) { this.children = children; }
   addEventListener(name, callback) { this.events[name] = callback; }
   focus() { this.focused = true; }
+  querySelector(selector) { return [...this.walk()].find((node) => node !== this && String(node.className || '').split(' ').includes(selector.replace('.', ''))) || null; }
   contains(node) { return [...this.walk()].includes(node); }
   getBoundingClientRect() { return { left: 40, top: 30, bottom: 48 }; }
   showModal() { this.open = true; }
@@ -67,7 +74,9 @@ function workspace(stored = new Map(), templates = core.TEMPLATES) {
 }
 
 const find = (root, predicate) => [...root.walk()].find(predicate);
-const button = (root, text) => find(root, (node) => node.tag === 'button' && node.textContent === text);
+// A button's label may sit in a child span, beside its icon.
+const labelOf = (node) => node.textContent || [...node.walk()].filter((child) => child !== node).map((child) => child.textContent).join('');
+const button = (root, text) => find(root, (node) => node.tag === 'button' && labelOf(node) === text);
 const type = (node, value) => { node.value = value; node.events.input({ target: node }); };
 const choose = (node, value) => { node.value = value; node.events.change({ target: node }); };
 // Read the pane back out of its coloured spans: what is shown must be the
@@ -399,4 +408,16 @@ test('a pasted response is recorded, summarised and kept per question', () => {
   app.get('confirm-accept').events.click();
   app.get('confirm-dialog').events.close();
   assert.deepEqual(JSON.parse(app.stored.get('jev-builder:runs')), []);
+});
+
+test('the action rail collapses and stays that way', () => {
+  const app = workspace();
+  assert.equal(app.get('rail').classList.contains('closed'), false);
+  assert.equal(app.get('rail-toggle').attrs['aria-expanded'], 'true');
+  app.get('rail-toggle').events.click();
+  assert.equal(app.get('rail').classList.contains('closed'), true);
+  assert.equal(app.stored.get('jev-builder:rail'), 'closed');
+  const back = workspace(app.stored);
+  assert.equal(back.get('rail').classList.contains('closed'), true);
+  assert.equal(back.get('rail-toggle').attrs['aria-expanded'], 'false');
 });

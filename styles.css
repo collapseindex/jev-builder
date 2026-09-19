@@ -20,7 +20,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .theme-toggle .icon{width:16px;height:16px}
 .theme-toggle:hover{color:var(--text);border-color:var(--muted)}
 .workspace{width:100%;padding:0}
-.template-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.template-bar{display:flex;flex-direction:column;gap:2px;padding:6px}
 .workspace-grid{display:grid;grid-template-columns:minmax(0,var(--columns,50%)) auto minmax(0,1fr);gap:0;align-items:stretch;min-height:0}.splitter{position:relative;background:transparent;border:0;padding:0;touch-action:none;z-index:2}.splitter::after{content:"";position:absolute;inset:-3px}.splitter:hover,.splitter.dragging,.splitter:focus-visible{background:var(--accent)}.splitter-col{width:3px;cursor:col-resize}.splitter-row{height:3px;cursor:row-resize}
 .editors{min-width:0;min-height:0;display:grid;grid-template-rows:minmax(0,var(--rows,45%)) auto minmax(0,1fr);border-right:1px solid var(--rule)}
 .editor-panel,.preview-panel{min-width:0;min-height:0;background:var(--bg);overflow:hidden}
@@ -90,7 +90,7 @@ textarea.source-editor{display:block;flex:1;width:100%;height:100%;min-height:60
 .confirm-dialog h2{font-size:18px;line-height:1.3;margin:0 0 10px;font-weight:600}
 .confirm-dialog p{font-size:13px;color:var(--muted);margin:0 0 24px}
 .dialog-actions{display:flex;gap:8px;justify-content:flex-end}
-@media(min-width:901px) and (min-height:601px){body{height:100dvh;overflow:hidden;display:flex;flex-direction:column}.top{flex-shrink:0}.workspace{flex:1;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto}}
+@media(min-width:901px) and (min-height:601px){body{height:100dvh;overflow:hidden;display:flex;flex-direction:column}.top{flex-shrink:0}.shell{flex:1;min-height:0}.workspace{min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto}}
 @media(max-width:900px),(max-height:600px){.splitter{display:none}.workspace-grid{grid-template-columns:minmax(0,1fr)}.editors{grid-template-rows:260px minmax(260px,auto);border-right:0}.question-body{max-height:480px}.preview-panel{height:560px}.source-field:only-child{min-height:140px}.workspace-toolbar{flex-wrap:wrap}.privacy{font-size:10px}.source-body{min-height:0}}
 @media(max-width:600px){.top{padding:8px 12px;gap:10px}.top-label{display:none}.theme-toggle{margin-left:auto}.save-note{display:none}.template-bar{gap:8px;width:100%}.template-bar select{min-width:0;flex:1}.template-bar label,.template-symbol{display:none}.grid2{grid-template-columns:1fr}.panel-meta{display:none}.rowline{flex-wrap:wrap}.seg button{padding-inline:12px}.buttons button{min-height:40px}textarea,input[type=text],input[type=number],select{font-size:16px}.question-fields textarea,textarea.source-editor{font-size:16px}.panel-heading{padding-inline:12px}.dialog-actions button{min-height:42px}}
 
@@ -184,3 +184,19 @@ button.ghost.danger{color:var(--bad)}
 .runner-state{font-size:11px;color:var(--muted)}
 .action-bar .save-note{margin-left:auto}
 @media(max-width:600px){.runner-state{display:none}.action-bar{padding:8px 12px}}
+
+.shell{display:flex;min-width:0}
+.workspace{flex:1;min-width:0}
+.rail{display:flex;flex-direction:column;flex-shrink:0;width:186px;border-right:1px solid var(--rule);background:var(--soft);overflow:auto;transition:width var(--fast) var(--ease)}
+.rail.closed{width:50px}
+.rail-toggle{display:flex;align-items:center;gap:10px;font:inherit;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:none;border:0;border-bottom:1px solid var(--rule);padding:10px 12px;min-height:38px}
+.rail-toggle:hover{color:var(--text)}
+.rail-chevron{font-size:13px}
+.rail-button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:none;color:var(--muted);padding:8px 11px;border-radius:6px;min-height:36px}
+.rail-button:hover{background:var(--field);color:var(--text);border:0}
+.rail-button>.icon{width:18px;height:18px;flex-shrink:0}
+.rail .rail-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rail.closed .rail-label{display:none}
+.rail.closed .rail-toggle{justify-content:center;padding:10px 0}
+.rail.closed .rail-button{justify-content:center;padding:8px 0}
+@media(max-width:900px){.shell{flex-direction:column}.rail{width:auto;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--rule)}.rail.closed{width:auto}.rail-toggle{display:none}.template-bar{flex-direction:row;flex-wrap:wrap}.rail-button{width:auto}}

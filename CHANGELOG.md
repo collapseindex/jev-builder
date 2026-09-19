@@ -2,6 +2,12 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.5.0 (2026-09-19)
+
+### Changed
+- Browse templates, Start blank and Save as template move to a rail down the left that collapses to
+  its icons, remembered per browser, and becomes a row of buttons on narrow screens.
+
 ## v1.4.0 (2026-09-19)
 
 ### Changed

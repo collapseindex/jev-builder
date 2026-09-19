@@ -203,12 +203,12 @@
     syncTheme();
     const FORMAT_STORE = 'jev-builder:format';
     const FORMATS = {
-      json: { label: 'JSON request', note: 'The complete request body for the Jev API.', outputs: [['Request JSON', (m) => JSON.stringify(core.requestBody(m), null, 2), 'json']] },
       playground: { label: 'Playground', note: 'Copy State and Questions into the matching Playground panes.', outputs: [['State', core.playgroundState, 'json'], ['Questions', core.playgroundQuestions, 'json']] },
+      json: { label: 'JSON request', note: 'The complete request body for the Jev API.', outputs: [['Request JSON', (m) => JSON.stringify(core.requestBody(m), null, 2), 'json']] },
       python: { label: 'Python', note: 'Set TYPESAFE_API_KEY in your environment, then run with Python.', outputs: [['Python', core.pythonSnippet, 'python']] },
       curl: { label: 'Command line', note: 'For Mac, Linux, or Git Bash. Set TYPESAFE_API_KEY in your environment.', outputs: [['curl', core.curlSnippet, 'shell']] },
     };
-    let format = 'json';
+    let format = 'playground';
     try { const saved = localStorage.getItem(FORMAT_STORE); if (Object.hasOwn(FORMATS, saved)) format = saved; } catch { /* Keep default format. */ }
     let outputs = [];
     const blankQuestion = (type) => ({
@@ -274,8 +274,12 @@
       catch (e) { const t = el('textarea'); t.value = text; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); }
       const label = button.textContent; button.textContent = 'Copied'; setTimeout(() => { button.textContent = label; }, 1200);
     }
+    // The library is the fastest way in, so the button breathes until it is opened once.
+    const SEEN_STORE = 'jev-builder:seen-library';
+    let seenLibrary = true;
+    try { seenLibrary = localStorage.getItem(SEEN_STORE) === 'yes'; } catch { /* No storage: leave it quiet. */ }
     function renderTemplates() {
-      const picker = el('button', { type: 'button', id: 'template-picker', class: 'ghost template-picker', 'aria-haspopup': 'dialog', 'aria-controls': 'template-library', onclick: openLibrary }, icon('start'), el('span', { text: 'Browse templates' }));
+      const picker = el('button', { type: 'button', id: 'template-picker', class: 'ghost template-picker' + (seenLibrary ? '' : ' inviting'), 'aria-haspopup': 'dialog', 'aria-controls': 'template-library', onclick: openLibrary }, icon('start'), el('span', { text: 'Browse templates' }));
       document.getElementById('templates').replaceChildren(picker,
         el('button', { type: 'button', class: 'ghost', text: 'Start blank', onclick: () => {
           const clear = () => { model = freshDraft(); changed(true); };
@@ -287,6 +291,11 @@
     let chosenTemplate = null;
     function openLibrary() {
       if (confirmDialog.open || library.open) return;
+      if (!seenLibrary) {
+        seenLibrary = true;
+        document.getElementById('template-picker').classList.remove('inviting');
+        try { localStorage.setItem(SEEN_STORE, 'yes'); } catch { /* Nothing to remember it with. */ }
+      }
       document.getElementById('library-search').value = libraryState.query;
       renderLibrary();
       library.showModal();

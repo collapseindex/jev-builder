@@ -2,6 +2,14 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.1.0 (2026-09-19)
+
+### Changed
+- The preview opens on the Playground view, which is where most people start; the JSON request,
+  Python and curl views are one select away, and a saved choice still wins.
+- Browse templates breathes until the library has been opened once, remembered per browser and
+  still for anyone who prefers reduced motion.
+
 ## v1.0.0 (2026-09-19)
 
 First release as its own repository, lifted out of

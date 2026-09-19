@@ -84,6 +84,7 @@ const accept = (app) => { if (app.get('confirm-dialog').open) app.get('confirm-a
 
 test('editors coexist and typing updates JSON without replacing inputs', async () => {
   const app = workspace();
+  choose(app.get('output-format'), 'json');
   assert.ok(find(app.get('source-panel'), (node) => node.tag === 'textarea'));
   assert.ok(find(app.get('questions-panel'), (node) => node.tag === 'textarea'));
   const text = find(app.get('source-panel'), (node) => node.tag === 'textarea');
@@ -104,6 +105,8 @@ test('editors coexist and typing updates JSON without replacing inputs', async (
 
 test('all templates and output formats use the core generators', () => {
   const app = workspace();
+  assert.equal(app.get('output-format').value, 'playground');   // the default, with nothing saved
+  choose(app.get('output-format'), 'json');
   for (const template of core.TEMPLATES) {
     chooseTemplate(app, template.id);
     accept(app);
@@ -124,6 +127,7 @@ test('structural changes refresh output and source names remain unique', () => {
   const draft = core.fromTemplate('urgent');
   draft.state.push({ key: 'text_3', text: 'Synthetic second input' });
   const app = workspace(new Map([[STORE, JSON.stringify(draft)]]));
+  choose(app.get('output-format'), 'json');
   button(app.get('source-panel'), '+ Add another piece of text').events.click();
   const state = JSON.parse(preview(app)).state;
   assert.ok(Object.hasOwn(state, 'text_4'));
@@ -145,6 +149,7 @@ test('theme toggle persists and old tab navigation is absent', () => {
 
 test('custom confirmation cancels safely, handles Escape and resets between actions', () => {
   const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
+  choose(app.get('output-format'), 'json');
   const original = preview(app);
   chooseTemplate(app, 'lyrics');
   assert.equal(app.get('confirm-dialog').open, true);
@@ -170,6 +175,7 @@ test('custom confirmation cancels safely, handles Escape and resets between acti
 
 test('header names edit outputs, auto-update and preserve manual overrides', () => {
   const app = workspace();
+  choose(app.get('output-format'), 'json');
   const textName = find(app.get('source-panel'), (node) => node.attrs['aria-label'] === 'text 1 name');
   const questionName = find(app.get('questions-panel'), (node) => node.attrs['aria-label'] === 'question 1 name');
   const question = find(app.get('questions-panel'), (node) => node.tag === 'textarea');
@@ -307,4 +313,14 @@ test('definition templates carry their policy as a second field', () => {
     const yaml = core.jevYaml(model);
     for (const [key] of template.fields.slice(1)) assert.ok(yaml.includes(key + ':' + String.raw`\n`), key + ' missing from the check file');
   }
+});
+
+test('the browse button invites until the library has been opened once', () => {
+  const app = workspace();
+  assert.match(app.get('template-picker').className, /inviting/);
+  app.get('template-picker').events.click();
+  assert.equal(app.stored.get('jev-builder:seen-library'), 'yes');
+  // A later visit in the same browser gets the quiet button.
+  const returning = workspace(app.stored);
+  assert.doesNotMatch(returning.get('template-picker').className, /inviting/);
 });

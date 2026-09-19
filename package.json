@@ -1,0 +1,16 @@
+{
+  "name": "jev-builder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A browser form for building requests to TypeSafe's Jev: pick a template, fill in the blanks, copy the request.",
+  "homepage": "https://collapseindex.github.io/jev-builder/",
+  "repository": { "type": "git", "url": "https://github.com/collapseindex/jev-builder.git" },
+  "license": "Apache-2.0",
+  "author": "Alex Kwon <ask@collapseindex.org>",
+  "scripts": {
+    "test": "node --test tests/test_jev_workspace.mjs",
+    "check:templates": "node scripts/check-jev-builder.mjs",
+    "start": "node scripts/serve.mjs"
+  }
+}

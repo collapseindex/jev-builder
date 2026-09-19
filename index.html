@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <link rel="stylesheet" href="./styles.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ask Jev a question · Collapse Index Labs</title>
+  <meta name="description" content="Pick a template or start blank, fill in the blanks, and get a ready-to-use Jev request for the Playground, Python or the command line. Runs in your browser; collects nothing." />
+  <meta name="author" content="Alex Kwon" />
+  <meta name="theme-color" content="#1c1c1e" />
+  <script>
+    try {
+      const theme = localStorage.getItem('jev-builder:theme');
+      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    } catch { /* Use charcoal when browser storage is unavailable. */ }
+  </script>
+  <link rel="icon" type="image/png" href="./favicon.png" />
+  <link rel="canonical" href="https://collapseindex.github.io/jev-builder/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://collapseindex.github.io/jev-builder/" />
+  <meta property="og:title" content="Ask Jev a question · Collapse Index Labs" />
+  <meta property="og:description" content="Pick a template or start blank, fill in the blanks, and get a ready-to-use Jev request for the Playground, Python or the command line. Runs in your browser; collects nothing." />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:creator" content="@collapseindex" />
+  <!-- No web fonts and no third-party script: the page makes no request
+       beyond itself and /tools/jev-builder-core.js on this site. -->
+
+
+</head>
+<body>
+  <a class="skip" href="#main">Skip to builder</a>
+  <div class="top">
+    <a href="https://collapseindex.org" class="wordmark">collapseindex<span>labs</span></a>
+    <span class="top-label">Tools <span aria-hidden="true">/</span> Jev builder</span>
+    <div class="template-bar" id="templates"></div>
+    <p class="save-note" id="save-note" role="status">Draft stays in this browser</p>
+    <span class="local-note"><span aria-hidden="true">●</span> Local in your browser</span>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch color theme">Theme</button>
+  </div>
+  <main class="workspace" id="main" tabindex="-1">
+    <h1 class="sr-only">Jev workspace</h1>
+    <div class="workspace-grid" id="workspace-grid">
+      <div class="editors" id="editors">
+        <section class="editor-panel" id="source-panel" aria-label="Source text"></section>
+        <div class="splitter splitter-row" id="split-rows" role="separator" tabindex="0" aria-orientation="horizontal" aria-label="Resize the text and questions panes" aria-valuemin="20" aria-valuemax="80" aria-valuenow="45"></div>
+        <section class="editor-panel" id="questions-panel" aria-label="Questions"></section>
+      </div>
+      <div class="splitter splitter-col" id="split-columns" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize the editors and preview" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50"></div>
+      <section class="preview-panel" aria-label="Live request preview">
+        <div class="panel-heading"><h2>Request preview</h2><span id="preview-help"></span><span class="token-count" id="token-count"></span><label class="sr-only" for="output-format">Output format</label><select id="output-format" aria-describedby="preview-note"></select></div>
+        <p class="sr-only" id="preview-note"></p>
+        <div id="preview-output"></div>
+      </section>
+    </div>
+  </main>
+  <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-message"></p>
+    <div class="dialog-actions">
+      <button type="button" class="ghost" id="confirm-cancel" autofocus>Keep editing</button>
+      <button type="button" class="act" id="confirm-accept">Continue</button>
+    </div>
+  </dialog>
+  <dialog id="template-library" class="template-library" aria-labelledby="library-title">
+    <header class="library-heading"><div><h2 id="library-title">Template library</h2><p>A starting point for your next question.</p></div><button type="button" class="ghost" id="library-close" aria-label="Close template library">Close</button></header>
+    <label class="sr-only" for="library-search">Search templates</label>
+    <input type="search" id="library-search" placeholder="Search templates..." maxlength="120" autocomplete="off" autofocus />
+    <div class="library-body">
+      <nav id="library-categories" class="library-categories" aria-label="Template categories"></nav>
+      <div class="library-main">
+        <p id="library-count" class="library-count" role="status"></p>
+        <div id="library-results" class="library-results"></div>
+        <footer class="library-pagination"><button type="button" class="ghost" id="library-prev">Previous</button><span id="library-page"></span><button type="button" class="ghost" id="library-next">Next</button></footer>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module">
+    import * as core from './jev-builder-core.js';
+
+    const STORE = 'jev-builder:v2';
+    const tooltip = el('div', { id: 'help-tooltip', role: 'tooltip', class: 'help-tooltip', hidden: true });
+    document.body.append(tooltip);
+    let tooltipTarget = null;
+    let tooltipMessage = null;
+    let tooltipTimer;
+    const TOOLTIP_GAP = 8;
+    const TOOLTIP_HIDE_DELAY = 150;
+    function hideHelp() {
+      clearTimeout(tooltipTimer);
+      tooltip.hidden = true;
+      tooltipTarget = null;
+      tooltipMessage = null;
+    }
+    function showHelp(button, message) {
+      clearTimeout(tooltipTimer);
+      tooltipTarget = button;
+      tooltipMessage = message;
+      tooltip.textContent = typeof message === 'function' ? message() : message;
+      tooltip.hidden = false;
+      const box = button.getBoundingClientRect();
+      const left = Math.max(TOOLTIP_GAP, Math.min(box.left, window.innerWidth - tooltip.offsetWidth - TOOLTIP_GAP));
+      const top = box.bottom + TOOLTIP_GAP + tooltip.offsetHeight <= window.innerHeight
+        ? box.bottom + TOOLTIP_GAP : Math.max(TOOLTIP_GAP, box.top - tooltip.offsetHeight - TOOLTIP_GAP);
+      tooltip.style.left = left + 'px'; tooltip.style.top = top + 'px';
+    }
+    function help(message, label) {
+      const button = el('button', { type: 'button', class: 'info-button', text: 'i', 'aria-label': label, 'aria-describedby': 'help-tooltip' });
+      button.addEventListener('mouseenter', () => showHelp(button, message));
+      button.addEventListener('focus', () => showHelp(button, message));
+      // Keep the press off the document's dismiss handler, so a tap can toggle.
+      button.addEventListener('pointerdown', (event) => event.stopPropagation());
+      button.addEventListener('click', (event) => {
+        event.preventDefault(); event.stopPropagation();
+        if (tooltipTarget === button && !tooltip.hidden) hideHelp(); else showHelp(button, message);
+      });
+      button.addEventListener('mouseleave', () => { if (document.activeElement !== button) tooltipTimer = setTimeout(hideHelp, TOOLTIP_HIDE_DELAY); });
+      button.addEventListener('blur', hideHelp);
+      return button;
+    }
+    tooltip.addEventListener('mouseenter', () => clearTimeout(tooltipTimer));
+    tooltip.addEventListener('mouseleave', () => { if (document.activeElement !== tooltipTarget) hideHelp(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') hideHelp(); });
+    document.addEventListener('pointerdown', (event) => { if (event.target !== tooltipTarget && !tooltip.contains(event.target)) hideHelp(); });
+    window.addEventListener('resize', hideHelp);
+    document.addEventListener('scroll', hideHelp, true);
+    let pendingConfirmation = null;
+    const confirmDialog = document.getElementById('confirm-dialog');
+    function askConfirmation(title, message, label, accept, cancel = () => {}) {
+      if (confirmDialog.open) return;
+      pendingConfirmation = { accept, cancel, trigger: document.activeElement };
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      document.getElementById('confirm-accept').textContent = label;
+      confirmDialog.returnValue = '';
+      confirmDialog.showModal();
+    }
+    document.getElementById('confirm-cancel').addEventListener('click', () => confirmDialog.close('cancel'));
+    document.getElementById('confirm-accept').addEventListener('click', () => confirmDialog.close('accept'));
+    confirmDialog.addEventListener('close', () => {
+      const pending = pendingConfirmation;
+      pendingConfirmation = null;
+      if (!pending) return;
+      if (confirmDialog.returnValue === 'accept') pending.accept(); else pending.cancel();
+      const target = pending.trigger?.isConnected ? pending.trigger : document.getElementById('template-picker');
+      target?.focus({ preventScroll: true });
+    });
+    const ICON_PATHS = {
+      lyrics: 'M9 18V5l11-2v13M9 8l11-2M9 18c0 2-5 3-5 0s5-3 5 0M20 16c0 2-5 3-5 0s5-3 5 0',
+      urgent: 'M12 3 2 20h20L12 3ZM12 9v5M12 17v.1',
+      route: 'M4 12h7m-4-4 4 4-4 4M11 12h3V5h6M14 12v7h6M18 3l2 2-2 2M18 17l2 2-2 2',
+      refund: 'M7 7h10a5 5 0 0 1 0 10h-4M7 7l4-4M7 7l4 4M3 15h5v6H3z',
+      review: 'm12 3 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6Z',
+      spam: 'M5 7h14M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6',
+      cover: 'M14 3H5v18h14V8l-5-5ZM14 3v5h5M8 12h8M8 16h5',
+      refusal: 'm12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3ZM9 9l6 6M15 9l-6 6',
+      start: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+      text: 'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5',
+      questions: 'M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5',
+      plus: 'M12 5v14M5 12h14',
+      sales: 'M3 17l6-6 4 3 8-10M15 4h6v6M3 21h18',
+      research: 'M8 3h8M10 3v7L4 20h16l-6-10V3M7 15h10',
+      productivity: 'M9 5h12M9 12h12M9 19h12M2 5l2 2 3-4M2 12l2 2 3-4M2 19l2 2 3-4',
+      engineering: 'm8 6-6 6 6 6M16 6l6 6-6 6M14 3l-4 18',
+      moon: 'M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z',
+      sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1',
+    };
+    const LIBRARY_STORE = 'jev-builder:library';
+    const LIBRARY_PAGE_SIZE = 8;
+    const MAX_SEARCH_LENGTH = 120;
+    const categories = [...new Set(core.TEMPLATES.map((t) => t.category || 'Other'))].sort();
+    let libraryState = { query: '', category: '', page: 0 };
+    try {
+      const saved = JSON.parse(localStorage.getItem(LIBRARY_STORE) || 'null');
+      if (saved) libraryState = {
+        query: typeof saved.query === 'string' ? saved.query.slice(0, MAX_SEARCH_LENGTH) : '',
+        category: categories.includes(saved.category) ? saved.category : '',
+        page: Number.isSafeInteger(saved.page) && saved.page >= 0 ? saved.page : 0,
+      };
+    } catch { /* Use the default library view. */ }
+    const questionNames = new Map();
+    function icon(name) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      for (const [key, value] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false', class: 'icon' })) svg.setAttribute(key, value);
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', ICON_PATHS[name] || ICON_PATHS.plus);
+      svg.append(path);
+      return svg;
+    }
+    function syncTheme() {
+      const dark = document.documentElement.dataset.theme !== 'light';
+      const button = document.getElementById('theme-toggle');
+      button.replaceChildren(icon(dark ? 'sun' : 'moon'), el('span', { text: dark ? 'Light mode' : 'Dark mode' }));
+      button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to charcoal dark mode');
+      document.querySelector('meta[name="theme-color"]').content = dark ? '#1c1c1e' : '#ffffff';
+    }
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      document.documentElement.dataset.theme = theme;
+      try { localStorage.setItem('jev-builder:theme', theme); } catch { /* Theme still works for this visit. */ }
+      syncTheme();
+    });
+    syncTheme();
+    const FORMAT_STORE = 'jev-builder:format';
+    const FORMATS = {
+      json: { label: 'JSON request', note: 'The complete request body for the Jev API.', outputs: [['Request JSON', (m) => JSON.stringify(core.requestBody(m), null, 2), 'json']] },
+      playground: { label: 'Playground', note: 'Copy State and Questions into the matching Playground panes.', outputs: [['State', core.playgroundState, 'json'], ['Questions', core.playgroundQuestions, 'json']] },
+      python: { label: 'Python', note: 'Set TYPESAFE_API_KEY in your environment, then run with Python.', outputs: [['Python', core.pythonSnippet, 'python']] },
+      curl: { label: 'Command line', note: 'For Mac, Linux, or Git Bash. Set TYPESAFE_API_KEY in your environment.', outputs: [['curl', core.curlSnippet, 'shell']] },
+    };
+    let format = 'json';
+    try { const saved = localStorage.getItem(FORMAT_STORE); if (Object.hasOwn(FORMATS, saved)) format = saved; } catch { /* Keep default format. */ }
+    let outputs = [];
+    const blankQuestion = (type) => ({
+      key: '', autoKey: true, type, instructions: '', trueMeans: '', falseMeans: '',
+      levels: ['', '', ''], options: [{ name: '', description: '' }, { name: '', description: '' }],
+    });
+
+    let model = load();
+
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(STORE);
+        if (raw) return JSON.parse(raw);
+      } catch (e) { /* storage blocked: start fresh */ }
+      return freshDraft();
+    }
+    function freshDraft() {
+      const draft = core.starter();
+      draft.questions.push(blankQuestion('noul'));
+      return draft;
+    }
+    function save() {
+      try { localStorage.setItem(STORE, JSON.stringify(model)); document.getElementById('save-note').textContent = 'Saved in this browser'; }
+      catch { document.getElementById('save-note').textContent = 'Storage unavailable: copy your request before leaving'; }
+    }
+    function keyTaken(except) {
+      return new Set(model.questions.filter((q) => q !== except).map((q) => q.key));
+    }
+    function renameAuto(q) {
+      if (!q.autoKey) return;
+      q.key = core.keyFromText(q.instructions, keyTaken(q));
+    }
+
+    // --- tiny DOM helpers: text goes in as text, never as HTML --------------------
+    function el(tag, props = {}, ...kids) {
+      const node = document.createElement(tag);
+      for (const [k, v] of Object.entries(props)) {
+        if (k === 'class') node.className = v;
+        else if (k === 'text') node.textContent = v;
+        else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+        else if (v === true) node.setAttribute(k, '');
+        else if (v !== false && v != null) node.setAttribute(k, v);
+      }
+      for (const kid of kids.flat()) if (kid != null) node.append(kid);
+      return node;
+    }
+    function field(labelText, input, hint) {
+      const id = 'f' + Math.random().toString(36).slice(2, 9);
+      input.id = id;
+      return [el('div', { class: 'label-help' }, el('label', { for: id, text: labelText }), hint ? help(hint, 'About ' + labelText) : null), input];
+    }
+    function textInput(value, onChange, attrs = {}) {
+      return el('input', { type: 'text', value, spellcheck: 'false', ...attrs, oninput: (e) => { onChange(e.target.value); changed(false); } });
+    }
+    function textArea(value, onChange, attrs = {}) {
+      const t = el('textarea', { spellcheck: 'true', ...attrs, oninput: (e) => { onChange(e.target.value); changed(false); } });
+      t.value = value;
+      return t;
+    }
+    async function copyText(text, button) {
+      try { await navigator.clipboard.writeText(text); }
+      catch (e) { const t = el('textarea'); t.value = text; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); }
+      const label = button.textContent; button.textContent = 'Copied'; setTimeout(() => { button.textContent = label; }, 1200);
+    }
+    function renderTemplates() {
+      const picker = el('button', { type: 'button', id: 'template-picker', class: 'ghost template-picker', 'aria-haspopup': 'dialog', 'aria-controls': 'template-library', onclick: openLibrary }, icon('start'), el('span', { text: 'Browse templates' }));
+      document.getElementById('templates').replaceChildren(picker,
+        el('button', { type: 'button', class: 'ghost', text: 'Start blank', onclick: () => {
+          const clear = () => { model = freshDraft(); changed(true); };
+          if (hasWork()) askConfirmation('Start fresh?', 'Your current text and questions will be cleared.', 'Start blank', clear);
+          else clear();
+        } }));
+    }
+    const library = document.getElementById('template-library');
+    let chosenTemplate = null;
+    function openLibrary() {
+      if (confirmDialog.open || library.open) return;
+      document.getElementById('library-search').value = libraryState.query;
+      renderLibrary();
+      library.showModal();
+      document.getElementById('library-search').focus();
+    }
+    function templateRow(template) {
+      return el('button', { type: 'button', class: 'template-row', 'data-template-id': template.id, onclick: () => {
+        chosenTemplate = template;
+        library.close();
+      } }, icon(template.iconName || template.id), el('span', { class: 'template-copy' },
+        el('span', { class: 'template-title', text: template.shortTitle || template.title }),
+        el('span', { class: 'template-description', text: template.blurb })),
+        el('span', { class: 'template-type', text: core.TYPE_LABELS[template.question.type] }));
+    }
+    function libraryMatches(template) {
+      if (libraryState.category && (template.category || 'Other') !== libraryState.category) return false;
+      const haystack = [template.shortTitle, template.title, template.blurb, template.category, core.TYPE_LABELS[template.question.type]].join(' ').toLowerCase();
+      return libraryState.query.toLowerCase().trim().split(/\s+/).every((word) => haystack.includes(word));
+    }
+    function renderLibrary() {
+      const matches = core.TEMPLATES.filter(libraryMatches);
+      const pages = Math.max(1, Math.ceil(matches.length / LIBRARY_PAGE_SIZE));
+      libraryState.page = Math.min(libraryState.page, pages - 1);
+      document.getElementById('library-categories').replaceChildren(...['', ...categories].map((category) =>
+        el('button', { type: 'button', class: libraryState.category === category ? 'on' : '', 'aria-pressed': libraryState.category === category ? 'true' : 'false', text: category || 'All templates', onclick: () => {
+          libraryState.category = category; libraryState.page = 0; renderLibrary();
+          // Restore keyboard focus after replacing the category buttons.
+          const buttons = document.getElementById('library-categories').children;
+          buttons[['', ...categories].indexOf(category)]?.focus();
+        } })));
+      const page = matches.slice(libraryState.page * LIBRARY_PAGE_SIZE, (libraryState.page + 1) * LIBRARY_PAGE_SIZE);
+      const groups = new Map();
+      for (const template of page) {
+        const category = template.category || 'Other';
+        if (!groups.has(category)) groups.set(category, []);
+        groups.get(category).push(template);
+      }
+      const content = [...groups].flatMap(([category, templates]) =>
+        [libraryState.category ? null : el('h3', { text: category }), ...templates.map(templateRow)].filter(Boolean));
+      document.getElementById('library-results').replaceChildren(...(content.length ? content : [el('p', { class: 'library-empty', text: 'No templates found. Try another search or category.' })]));
+      document.getElementById('library-results').scrollTop = 0;
+      document.getElementById('library-count').textContent = matches.length + ' template' + (matches.length === 1 ? '' : 's');
+      document.getElementById('library-page').textContent = 'Page ' + (libraryState.page + 1) + ' of ' + pages;
+      document.querySelector('.library-pagination').hidden = pages === 1;
+      document.getElementById('library-prev').disabled = libraryState.page === 0;
+      document.getElementById('library-next').disabled = libraryState.page === pages - 1;
+      try { localStorage.setItem(LIBRARY_STORE, JSON.stringify(libraryState)); } catch { /* Search still works without storage. */ }
+    }
+    library.addEventListener('close', () => {
+      document.getElementById('template-picker').focus({ preventScroll: true });
+      const template = chosenTemplate;
+      chosenTemplate = null;
+      if (!template) return;
+      const apply = () => { model = core.fromTemplate(template.id); changed(true); };
+      if (hasWork()) askConfirmation('Use this template?', 'This replaces your current text and questions.', 'Use template', apply);
+      else apply();
+    });
+    document.getElementById('library-close').addEventListener('click', () => library.close());
+    document.getElementById('library-search').addEventListener('input', (event) => {
+      libraryState.query = event.target.value.slice(0, MAX_SEARCH_LENGTH);
+      libraryState.page = 0; renderLibrary();
+    });
+    document.getElementById('library-prev').addEventListener('click', () => { libraryState.page = Math.max(0, libraryState.page - 1); renderLibrary(); });
+    document.getElementById('library-next').addEventListener('click', () => { libraryState.page++; renderLibrary(); });
+    function headerNames(items, kind) {
+      const fallback = kind === 'text' ? 'text' : 'question_name';
+      // Each name is as wide as what it holds, so they read as one path:
+      // message / spam_policy.
+      const fit = (input, value) => input.setAttribute('size', String(Math.max(4, (value || fallback).length)));
+      const children = [];
+      items.forEach((item, index) => {
+        if (index) children.push(el('span', { class: 'name-sep', 'aria-hidden': 'true', text: '/' }));
+        const input = textInput(item.key, (value) => {
+          item.key = value.trim();
+          if (kind === 'question') item.autoKey = false;
+          fit(input, value);
+        }, { class: 'header-name', maxlength: 64, 'aria-label': kind + ' ' + (index + 1) + ' name', title: 'Edit name: lowercase letters, numbers and _', placeholder: fallback });
+        fit(input, item.key);
+        if (kind === 'question') questionNames.set(item, input);
+        fieldNames.set(item, input);
+        children.push(input);
+      });
+      return el('div', { class: 'header-names', 'aria-label': kind === 'text' ? 'Text names' : 'Question names' }, ...children);
+    }
+    function panelHeading(name, iconName, hint, names) {
+      return el('div', { class: 'panel-heading' }, icon(iconName), el('h2', { text: name }), names, el('span', { class: 'panel-meta', text: hint }));
+    }
+
+    function hasWork() {
+      return model.questions.some((q) => (q.instructions || '').trim()) || model.state.some((f) => (f.text || '').trim());
+    }
+
+    function textView() {
+      const rows = model.state.map((f, i) => el('div', { class: 'source-field' },
+        markFocus(f, textArea(f.text, (v) => { f.text = v; }, { class: 'source-editor', 'aria-label': model.state.length > 1 ? `Text ${i + 1}` : 'Source text', placeholder: 'Paste the text Jev should read...' })),
+        model.state.length > 1 ? el('div', { class: 'buttons' }, el('button', { type: 'button', class: 'ghost danger', text: 'Remove this text',
+          onclick: () => { model.state.splice(i, 1); changed(true); } })) : null));
+      return [panelHeading('Source text', 'text', 'What Jev reads', headerNames(model.state, 'text')),
+        el('div', { class: 'source-body' }, ...rows),
+        el('div', { class: 'pane-actions' },
+          el('button', { type: 'button', class: 'ghost', text: '+ Add another piece of text',
+            onclick: () => {
+              let n = model.state.length + 1;
+              while (model.state.some((f) => f.key === `text_${n}`)) n++;
+              model.state.push({ key: `text_${n}`, text: '' }); changed(true);
+            } }))];
+    }
+
+    function questionsView() {
+      const many = model.questions.length > 1;
+      const add = (type, label) => el('button', { type: 'button', class: 'ghost', text: label,
+        onclick: () => { model.questions.push(blankQuestion(type)); changed(true); } });
+      return [panelHeading('Questions', 'questions', 'What Jev decides', headerNames(model.questions, 'question')),
+        el('div', { class: 'question-body' }, ...model.questions.map((q, i) => el('div', { class: 'question-fields' },
+          many ? el('h3', { class: 'qhead', text: `Question ${i + 1}` }) : null, ...questionFields(q, i))),
+
+        el('div', { class: 'add-question' }, add('noul', '+ Yes or no'), add('score', '+ Rating'), add('choice', '+ Pick one')))];
+    }
+
+    function questionFields(q, i) {
+      const typeButtons = el('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Answer type' },
+        ...['noul', 'score', 'choice'].map((t) => el('button', { type: 'button', role: 'radio', 'aria-checked': q.type === t ? 'true' : 'false',
+          class: q.type === t ? 'on' : '', text: core.TYPE_LABELS[t], onclick: () => { q.type = t; changed(true); } })));
+      // The name follows the question as it is typed, until someone edits it by hand.
+      const nameInput = questionNames.get(q);
+      const parts = [
+        el('div', { class: 'label-help' }, el('span', { text: 'Kind of answer' }), help(core.TYPE_HINTS[q.type], 'About this answer type')), typeButtons,
+        ...field('Your question', textArea(q.instructions, (v) => { q.instructions = v; renameAuto(q); nameInput.value = q.key; }, { placeholder: {
+          noul: 'Is this message urgent?', score: 'How well written is this?', choice: 'Which team should handle this?' }[q.type], style: 'min-height: 70px' }))];
+      if (q.type === 'noul') {
+        // Already filled in (a template, or earlier editing): show it open.
+        const guided = Boolean((q.trueMeans || '').trim() || (q.falseMeans || '').trim());
+        parts.push(el('details', { class: 'answer-guidance', open: guided }, el('summary', {}, 'Answer guidance (optional) ', help('Spelling these out usually makes the answers more consistent.', 'About answer guidance')), el('div', { class: 'grid2' },
+          el('div', {}, ...field('What counts as yes? (optional)', textArea(q.trueMeans, (v) => { q.trueMeans = v; }, { placeholder: 'e.g. something is broken or costing money right now', style: 'min-height: 70px' }))),
+          el('div', {}, ...field('What counts as no? (optional)', textArea(q.falseMeans, (v) => { q.falseMeans = v; }, { placeholder: 'e.g. a question or a thank-you that can wait', style: 'min-height: 70px' }))))));
+      }
+      if (q.type === 'score') {
+        parts.push(el('div', { class: 'label-help' }, el('span', { text: 'The scale, worst to best' }), help('Jev answers with a number on this scale (0 is the first level) and how sure it is.', 'About the rating scale')),
+          ...q.levels.map((lv, j) => el('div', { class: 'rowline' }, el('span', { class: 'n', text: String(j) }),
+            el('div', { class: 'grow' }, textInput(lv, (v) => { q.levels[j] = v; }, { placeholder: j === 0 ? 'the worst level, e.g. Weak: generic and unclear' : j === q.levels.length - 1 ? 'the best level, e.g. Excellent: vivid and memorable' : 'a level in between' })),
+            el('button', { type: 'button', class: 'ghost', text: '↑', title: 'Move up', 'aria-label': 'Move up', disabled: j === 0, onclick: () => { [q.levels[j - 1], q.levels[j]] = [q.levels[j], q.levels[j - 1]]; changed(true); } }),
+            el('button', { type: 'button', class: 'ghost danger', text: '×', title: 'Remove', 'aria-label': 'Remove', disabled: q.levels.length <= 2, onclick: () => { q.levels.splice(j, 1); changed(true); } }))),
+          el('div', { class: 'buttons' }, el('button', { type: 'button', class: 'ghost', text: '+ Add a level', onclick: () => { q.levels.push(''); changed(true); } })));
+      }
+      if (q.type === 'choice') {
+        parts.push(el('label', { text: 'The options' }),
+          ...q.options.map((o, j) => el('div', { class: 'rowline' },
+            el('div', { style: 'flex: 0 0 30%' }, textInput(o.name, (v) => { o.name = v; }, { placeholder: 'short name, e.g. billing', 'aria-label': 'option name' })),
+            el('div', { class: 'grow' }, textInput(o.description, (v) => { o.description = v; }, { placeholder: 'what it means, e.g. payments and refunds', 'aria-label': 'what it means' })),
+            el('button', { type: 'button', class: 'ghost danger', text: '×', title: 'Remove', 'aria-label': 'Remove', disabled: q.options.length <= 2, onclick: () => { q.options.splice(j, 1); changed(true); } }))),
+          el('div', { class: 'buttons' }, el('button', { type: 'button', class: 'ghost', text: '+ Add an option', onclick: () => { q.options.push({ name: '', description: '' }); changed(true); } })));
+      }
+      parts.push(el('div', { class: 'buttons', style: 'margin-top: 16px' },
+        el('button', { type: 'button', class: 'ghost danger', text: 'Delete this question', onclick: () => {
+          askConfirmation('Delete this question?', 'The rest of your draft will stay as it is.', 'Delete question', () => {
+            model.questions.splice(i, 1); changed(true);
+          }); } })));
+      return parts;
+    }
+
+    function renderPreview() {
+      const config = FORMATS[format];
+      document.getElementById('preview-note').textContent = config.note;
+      outputs = config.outputs.map(([label, getText, language], index) => {
+        const id = 'output-' + index;
+        // A read-only <pre> of coloured lines: the gutter numbers come from CSS,
+        // so they are never part of a selection or a copy.
+        const area = el('pre', { id, class: 'code-view', tabindex: '0', 'aria-label': label });
+        area.text = '';
+        const button = el('button', { type: 'button', class: 'ghost', text: 'Copy', 'aria-label': 'Copy ' + label });
+        button.addEventListener('click', () => copyText(area.text, button));
+        const node = el('div', { class: 'output-block' }, el('div', { class: 'output-heading' }, el('span', { class: 'output-label', text: label }), button), area);
+        return { area, getText, language, node };
+      });
+      document.getElementById('preview-output').replaceChildren(...outputs.map((o) => o.node));
+      refreshPreview();
+    }
+    function paintCode(area, text, language) {
+      area.text = text;
+      area.replaceChildren(...core.highlight(text, language).map((tokens) =>
+        el('span', { class: 'code-line' }, ...tokens.map(([kind, piece]) => el('span', { class: 'tok-' + kind, text: piece })))));
+    }
+    function refreshPreview() {
+      for (const output of outputs) paintCode(output.area, output.getText(model), output.language);
+      const issues = core.problems(model);
+      previewHelp.className = 'info-button' + (issues.length ? ' needs-attention' : '');
+      previewHelp.setAttribute('aria-label', issues.length ? `Request preview: ${issues.length} things to finish` : 'Request preview: ready to use');
+      document.getElementById('token-count').textContent = '~' + core.estimateInputTokens(model).toLocaleString() + ' tokens';
+      if (tooltipTarget && tooltipMessage) showHelp(tooltipTarget, tooltipMessage);
+    }
+
+    // Which name in a panel heading belongs to which field, so focus can mark it.
+    const fieldNames = new WeakMap();
+    function markFocus(item, editor) {
+      const mark = (on) => {
+        const name = fieldNames.get(item);
+        if (!name) return;
+        if (on) name.classList.add('current'); else name.classList.remove('current');
+      };
+      editor.addEventListener('focus', () => mark(true));
+      editor.addEventListener('blur', () => mark(false));
+      return editor;
+    }
+
+    function renderEditors() {
+      hideHelp();
+      questionNames.clear();
+      document.getElementById('source-panel').replaceChildren(...textView().flat().filter(Boolean));
+      document.getElementById('questions-panel').replaceChildren(...questionsView().flat().filter(Boolean));
+    }
+    // Keep editor nodes and cursor intact while typing; only derived output updates.
+    function changed(structural) { save(); if (structural) renderEditors(); refreshPreview(); }
+
+    const formatSelect = document.getElementById('output-format');
+    formatSelect.replaceChildren(...Object.entries(FORMATS).map(([key, config]) => el('option', { value: key, text: config.label })));
+    formatSelect.value = format;
+    formatSelect.addEventListener('change', () => {
+      if (!Object.hasOwn(FORMATS, formatSelect.value)) return;
+      format = formatSelect.value;
+      try { localStorage.setItem(FORMAT_STORE, format); } catch { /* Format remains usable for this visit. */ }
+      renderPreview();
+    });
+    const previewHelp = help(() => {
+      const issues = core.problems(model);
+      return (issues.length ? 'To finish:\n' + issues.map((issue) => '• ' + issue).join('\n') : 'Ready to use.') + '\nPreview only. Run it in your own environment.\n\nToken count is a rough estimate of compact State and Questions JSON at 4 characters per token. Actual Jev usage can differ; response tokens and server overhead are excluded.';
+    }, 'About request preview');
+    document.getElementById('preview-help').append(previewHelp);
+    renderTemplates();
+    renderEditors();
+    renderPreview();
+
+    // --- adjustable splitters ----------------------------------------------------
+    // Each handle stores its position as a percentage of its container, so the
+    // layout keeps its proportions when the window is resized.
+    const LAYOUT_STORE = 'jev-builder:layout';
+    const SPLIT_MIN = 20;
+    const SPLIT_MAX = 80;
+    const SPLIT_STEP = 2;
+    const SPLIT_DEFAULTS = { columns: 50, rows: 45 };
+    let layout = { ...SPLIT_DEFAULTS };
+    try {
+      const saved = JSON.parse(localStorage.getItem(LAYOUT_STORE) || 'null');
+      for (const key of Object.keys(SPLIT_DEFAULTS)) {
+        if (Number.isFinite(saved?.[key])) layout[key] = clampSplit(saved[key]);
+      }
+    } catch { /* Keep the default split when storage is unavailable. */ }
+
+    function clampSplit(value) { return Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, value)); }
+
+    function applyLayout() {
+      const grid = document.getElementById('workspace-grid');
+      const editors = document.getElementById('editors');
+      grid.style.setProperty('--columns', layout.columns + '%');
+      editors.style.setProperty('--rows', layout.rows + '%');
+      document.getElementById('split-columns').setAttribute('aria-valuenow', String(Math.round(layout.columns)));
+      document.getElementById('split-rows').setAttribute('aria-valuenow', String(Math.round(layout.rows)));
+      try { localStorage.setItem(LAYOUT_STORE, JSON.stringify(layout)); } catch { /* Nothing to save to. */ }
+    }
+
+    function setupSplitter(handle, container, key, sideways) {
+      let dragging = false;
+      const moveTo = (event) => {
+        const box = container.getBoundingClientRect();
+        const fraction = sideways
+          ? ((event.clientX - box.left) / box.width) * 100
+          : ((event.clientY - box.top) / box.height) * 100;
+        if (!Number.isFinite(fraction)) return;
+        layout[key] = clampSplit(Math.round(fraction * 10) / 10);
+        applyLayout();
+      };
+      handle.addEventListener('pointerdown', (event) => {
+        dragging = true;
+        handle.setPointerCapture?.(event.pointerId);
+        handle.classList.add('dragging');
+        event.preventDefault();
+      });
+      handle.addEventListener('pointermove', (event) => { if (dragging) moveTo(event); });
+      const stop = () => { dragging = false; handle.classList.remove('dragging'); };
+      handle.addEventListener('pointerup', stop);
+      handle.addEventListener('pointercancel', stop);
+      handle.addEventListener('dblclick', () => { layout[key] = SPLIT_DEFAULTS[key]; applyLayout(); });
+      handle.addEventListener('keydown', (event) => {
+        const less = sideways ? 'ArrowLeft' : 'ArrowUp';
+        const more = sideways ? 'ArrowRight' : 'ArrowDown';
+        if (event.key === less) layout[key] = clampSplit(layout[key] - SPLIT_STEP);
+        else if (event.key === more) layout[key] = clampSplit(layout[key] + SPLIT_STEP);
+        else if (event.key === 'Home') layout[key] = SPLIT_MIN;
+        else if (event.key === 'End') layout[key] = SPLIT_MAX;
+        else if (event.key === 'Enter') layout[key] = SPLIT_DEFAULTS[key];
+        else return;
+        event.preventDefault();
+        applyLayout();
+      });
+    }
+
+    setupSplitter(document.getElementById('split-columns'), document.getElementById('workspace-grid'), 'columns', true);
+    setupSplitter(document.getElementById('split-rows'), document.getElementById('editors'), 'rows', false);
+    applyLayout();
+
+  </script>
+</body>
+</html>

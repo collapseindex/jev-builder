@@ -158,7 +158,7 @@ button.ghost.danger{color:var(--bad)}
 .eval-questions button{font:inherit;font-size:12px;text-align:left;background:none;border:0;color:var(--muted);padding:7px 10px;border-radius:5px;display:flex;justify-content:space-between;gap:8px;align-items:center}
 .eval-questions button:hover{background:var(--soft);color:var(--text)}
 .eval-questions button.on{background:var(--tint);color:var(--text)}
-.eval-main{overflow:auto;padding:16px;min-width:0;display:flex;flex-direction:column;gap:18px}
+.eval-main{overflow:auto;padding:16px;min-width:0;display:flex;flex-direction:column;gap:18px}.eval-main>*{flex:0 0 auto}
 .eval-empty{color:var(--muted);font-size:13px;margin:0}
 .eval-question{font-size:13px;color:var(--muted);margin:0 0 6px}
 .eval-answer{font-size:26px;margin:0 0 12px}
@@ -174,8 +174,8 @@ button.ghost.danger{color:var(--bad)}
 .eval-stat-value{font-size:17px}
 .eval-chart-box{width:100%}
 .eval-chart{display:block;width:100%;border:1px solid var(--rule);border-radius:8px}
-.eval-history{overflow:auto}
+.eval-history{overflow-x:auto;padding-bottom:4px}.eval-history h3{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
 .eval-table{width:100%;border-collapse:collapse;font-size:12px}
 .eval-table th{text-align:left;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--rule)}
-.eval-table td{padding:6px 8px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:11px}
+.eval-table td{padding:6px 8px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:11px;white-space:nowrap}.eval-table tr:hover td{background:var(--soft)}
 @media(max-width:600px){.eval-body{grid-template-columns:minmax(0,1fr)}.eval-questions{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--rule)}.eval-panel{height:calc(100dvh - 16px)}}

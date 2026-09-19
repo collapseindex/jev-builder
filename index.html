@@ -931,6 +931,7 @@
         el('div', { class: 'eval-stat' }, el('span', { class: 'eval-stat-label', text: label }), el('span', { class: 'eval-stat-value', text: value }))));
 
       document.getElementById('eval-history').replaceChildren(
+        el('h3', { text: `every run (${rows.length})` }),
         el('table', { class: 'eval-table' },
           el('thead', {}, el('tr', {}, ...['when', 'answer', 'p', 'conf', 'ms', 'tokens', 'from'].map((head) => el('th', { text: head })))),
           el('tbody', {}, ...rows.slice().reverse().slice(0, 50).map((run) => el('tr', {},

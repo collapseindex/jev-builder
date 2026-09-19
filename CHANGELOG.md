@@ -2,6 +2,12 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.4.0 (2026-09-19)
+
+### Changed
+- Run and History (was Runs) move to a bar of their own along the bottom, with the draft note and a
+  line saying whether the runner is ready, has no key, or is absent.
+
 ## v1.3.0 (2026-09-19)
 
 ### Added

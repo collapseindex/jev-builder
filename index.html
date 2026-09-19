@@ -33,7 +33,6 @@
     <a href="https://collapseindex.org" class="wordmark">collapseindex<span>labs</span></a>
     <span class="top-label">Tools <span aria-hidden="true">/</span> Jev builder</span>
     <div class="template-bar" id="templates"></div>
-    <p class="save-note" id="save-note" role="status">Draft stays in this browser</p>
     <span class="local-note"><span aria-hidden="true">●</span> Local in your browser</span>
     <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch color theme">Theme</button>
   </div>
@@ -47,10 +46,16 @@
       </div>
       <div class="splitter splitter-col" id="split-columns" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize the editors and preview" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50"></div>
       <section class="preview-panel" aria-label="Live request preview">
-        <div class="panel-heading"><h2>Request preview</h2><span id="preview-help"></span><span class="token-count" id="token-count"></span><button type="button" class="ghost" id="runs-button" title="Runs recorded in this browser">Runs</button><button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button><label class="sr-only" for="output-format">Output format</label><select id="output-format" aria-describedby="preview-note"></select></div>
+        <div class="panel-heading"><h2>Request preview</h2><span id="preview-help"></span><span class="token-count" id="token-count"></span><label class="sr-only" for="output-format">Output format</label><select id="output-format" aria-describedby="preview-note"></select></div>
         <p class="sr-only" id="preview-note"></p>
         <div id="preview-output"></div>
       </section>
+    </div>
+    <div class="action-bar">
+      <button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button>
+      <button type="button" class="ghost" id="history-button" title="Every run kept in this browser">History</button>
+      <span class="runner-state" id="runner-state"></span>
+      <p class="save-note" id="save-note" role="status">Draft stays in this browser</p>
     </div>
   </main>
   <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
@@ -85,7 +90,7 @@
   </dialog>
   <dialog id="eval-panel" class="eval-panel" aria-labelledby="eval-title">
     <header class="eval-heading">
-      <div><h2 id="eval-title">Runs</h2><p class="eval-sub" id="eval-meta"></p></div>
+      <div><h2 id="eval-title">History</h2><p class="eval-sub" id="eval-meta"></p></div>
       <div class="eval-actions">
         <button type="button" class="ghost" id="eval-paste">Paste a response</button>
         <button type="button" class="ghost" id="eval-png">Save PNG</button>
@@ -795,9 +800,11 @@
       if (!button) return;
       button.disabled = false;
       button.textContent = 'Run';
-      button.title = runner.runner && runner.keyed
-        ? 'Send this request to Jev through your own runner'
-        : 'Running needs the local runner: npm start with TYPESAFE_API_KEY';
+      const ready = runner.runner && runner.keyed;
+      button.title = ready ? 'Send this request to Jev through your own runner'
+                           : 'Running needs the local runner: npm start with TYPESAFE_API_KEY';
+      document.getElementById('runner-state').textContent = ready ? 'runner ready'
+        : runner.runner ? 'runner has no key' : 'no runner: paste a response instead';
     }
 
     async function runNow() {
@@ -889,7 +896,7 @@
       const rows = runsFor(evalKey);
       const stats = core.summariseRuns(rows);
       const latest = rows[rows.length - 1];
-      document.getElementById('eval-title').textContent = evalKey ? `Runs · ${evalKey}` : 'Runs';
+      document.getElementById('eval-title').textContent = evalKey ? `History · ${evalKey}` : 'History';
       document.getElementById('eval-meta').textContent = latest
         ? `${latest.jev || 'jev'} · last run ${new Date(latest.at).toLocaleString()}`
         : '';
@@ -1087,7 +1094,7 @@
     }
 
     document.getElementById('run-button').addEventListener('click', runNow);
-    document.getElementById('runs-button').addEventListener('click', () => openEval(model.questions[0]?.key || ''));
+    document.getElementById('history-button').addEventListener('click', () => openEval(model.questions[0]?.key || ''));
     document.getElementById('eval-close').addEventListener('click', () => evalPanel.close());
     document.getElementById('eval-png').addEventListener('click', saveChartPng);
     document.getElementById('eval-paste').addEventListener('click', () => pasteResponse());

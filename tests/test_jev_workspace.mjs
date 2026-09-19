@@ -366,14 +366,14 @@ test('a pasted response is recorded, summarised and kept per question', () => {
   const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
   const key = JSON.parse(app.stored.get(STORE)).questions[0].key;
   const paste = (noul) => {
-    app.get('eval-paste')?.events?.click?.() ?? app.get('runs-button').events.click();
+    app.get('eval-paste')?.events?.click?.() ?? app.get('history-button').events.click();
     app.get('paste-input').value = JSON.stringify({
       model: 'jev-1.13.0', answers: { [key]: { type: 'noul', noul } },
       usage: { input_tokens: 300, output_tokens: 23 },
     });
     app.get('paste-accept').events.click();
   };
-  app.get('runs-button').events.click();
+  app.get('history-button').events.click();
   app.get('eval-paste').events.click();
   paste(0.95);
   paste(0.88);

@@ -2,6 +2,17 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.16.0 (2026-09-19)
+
+### Changed
+- An expectation is a rule, not just a label: the answer, a floor under how sure it has to be, and
+  for a rating a range along the scale. "yes" still means what it did, and a saved draft written
+  the old way still reads.
+
+### Added
+- `readExpectation`, `describeExpectation` and `meetsExpectation` in the core module, so one rule
+  is read the same way by the badge, the table and the tally.
+
 ## v1.15.0 (2026-09-19)
 
 ### Added

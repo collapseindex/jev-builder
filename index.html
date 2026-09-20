@@ -1077,8 +1077,9 @@
         el('p', { class: 'eval-answer' },
           el('strong', { text: latest.type === 'score' ? fmt(latest.value) : latest.answer }),
           el('span', { class: 'eval-sub', text: latest.type === 'score' ? ` of ${Math.max(0, entries.length - 1)}` : ` at ${percent(latest.p)}` }),
-          question?.expect ? el('span', { class: 'verdict ' + (String(latest.answer) === String(question.expect) ? 'pass' : 'fail'),
-            text: String(latest.answer) === String(question.expect) ? 'PASS' : 'FAIL' }) : null),
+          question?.expect ? el('span', { class: 'verdict ' + (core.meetsExpectation(latest, question.expect) ? 'pass' : 'fail'),
+            title: 'Expected: ' + core.describeExpectation(question.expect),
+            text: core.meetsExpectation(latest, question.expect) ? 'PASS' : 'FAIL' }) : null),
         ...entries.map(([name, value]) => el('div', { class: 'eval-bar' },
           el('span', { class: 'eval-bar-label', text: labelFor(latest, name) }),
           el('span', { class: 'eval-bar-track' }, el('span', { class: 'eval-bar-fill', style: `width:${Math.max(0, Math.min(1, value)) * 100}%` })),
@@ -1115,8 +1116,8 @@
             el('td', { text: run.ms == null ? '—' : String(run.ms) }),
             el('td', { text: String((run.inputTokens || 0) + (run.outputTokens || 0)) }),
             el('td', { text: run.source }),
-            question?.expect ? el('td', { class: String(run.answer) === String(question.expect) ? 'ok' : 'not-ok',
-              text: String(run.answer) === String(question.expect) ? '✓' : '✗' }) : null)))));
+            question?.expect ? el('td', { class: core.meetsExpectation(run, question.expect) ? 'ok' : 'not-ok',
+              text: core.meetsExpectation(run, question.expect) ? '✓' : '✗' }) : null)))));
       drawChart(rows);
       const lastPass = probeRows[probeRows.length - 1]?.pass || '';
       const passProbes = lastPass ? probeRows.filter((run) => run.pass === lastPass) : probeRows;
@@ -1150,18 +1151,44 @@
     function renderExpect(question, rows) {
       const box = document.getElementById('eval-expect');
       if (!question) { box.replaceChildren(); return; }
-      const options = core.answerOptions(question);
-      const select = el('select', { 'aria-label': 'Expected answer', onchange: (event) => {
-        question.expect = event.target.value;
+      const rule = core.readExpectation(question.expect) || {};
+      const save = (changes) => {
+        const next = { ...rule, ...changes };
+        for (const [name, value] of Object.entries(next)) {
+          if (value === '' || value == null) delete next[name];
+        }
+        question.expect = Object.keys(next).length ? next : '';
         changed(false);
         renderEval();
-      } }, el('option', { value: '', text: 'no expectation', selected: !question.expect }),
-        ...options.map((name) => el('option', { value: name, text: name, selected: question.expect === name })));
+      };
+      const kids = [el('span', { class: 'eval-expect-label', text: 'I expect' })];
+      const options = core.answerOptions(question);
+      kids.push(el('select', { 'aria-label': 'Expected answer', onchange: (event) => save({ answer: event.target.value }) },
+        el('option', { value: '', text: question.type === 'score' ? 'any level' : 'nothing in particular', selected: !rule.answer }),
+        ...options.map((name) => el('option', { value: name, text: name, selected: rule.answer === name }))));
+
+      if (question.type === 'score') {
+        // A rating is a position, so a range says more than a level does.
+        const topLevel = Math.max(0, (question.levels || []).length - 1);
+        const number = (label, name, value) => [
+          el('span', { class: 'eval-expect-label', text: label }),
+          el('input', { type: 'number', min: '0', max: String(topLevel), step: '0.1', value: value ?? '',
+            'aria-label': label, style: 'width: 84px',
+            oninput: (event) => save({ [name]: event.target.value }) }),
+        ];
+        kids.push(...number('and at least', 'min', rule.min), ...number('at most', 'max', rule.max));
+      } else {
+        kids.push(el('span', { class: 'eval-expect-label', text: 'and at least' }),
+          el('input', { type: 'number', min: '0', max: '1', step: '0.05', value: rule.minP ?? '',
+            'aria-label': 'Minimum probability', style: 'width: 84px', placeholder: 'any',
+            oninput: (event) => save({ minP: event.target.value }) }));
+      }
+
       const report = core.passRate(rows, question.expect);
-      const kids = [el('span', { class: 'eval-expect-label', text: 'I expect' }), select];
       if (report) {
         const all = report.passed === report.n;
         kids.push(el('span', { class: 'verdict ' + (all ? 'pass' : report.passed ? 'mixed' : 'fail'),
+          title: 'Expected: ' + core.describeExpectation(question.expect),
           text: all ? `PASS · ${report.n}/${report.n}` : `${report.passed} of ${report.n} passed` }));
       }
       box.replaceChildren(...kids);

@@ -1426,10 +1426,60 @@ export function answerOptions(question) {
   return (question.levels || []).map((_, index) => String(index));
 }
 
-/** How many runs matched what you said you expected. */
-export function passRate(rows, expected) {
+/**
+ * An expectation is a rule a run either meets or does not.
+ *
+ *   { answer: "yes", minP: 0.8 }        the answer, and how sure at least
+ *   { min: 1, max: 2 }                  a rating inside a range
+ *
+ * A bare string is the older shape, kept working: just the answer.
+ */
+export function readExpectation(value) {
+  if (!value) return null;
+  if (typeof value === "string") return { answer: value };
+  const rule = {};
+  if (value.answer) rule.answer = String(value.answer);
+  if (Number.isFinite(Number(value.minP)) && value.minP !== "") rule.minP = Number(value.minP);
+  if (Number.isFinite(Number(value.min)) && value.min !== "") rule.min = Number(value.min);
+  if (Number.isFinite(Number(value.max)) && value.max !== "") rule.max = Number(value.max);
+  return Object.keys(rule).length ? rule : null;
+}
+
+/** Said in words, for the verdict and for anyone reading a saved template. */
+export function describeExpectation(value) {
+  const rule = readExpectation(value);
+  if (!rule) return "";
+  const parts = [];
+  if (rule.answer) parts.push(rule.answer);
+  if (rule.minP != null) parts.push(`at ${Math.round(rule.minP * 100)}% or more`);
+  if (rule.min != null && rule.max != null) parts.push(`between ${rule.min} and ${rule.max}`);
+  else if (rule.min != null) parts.push(`${rule.min} or above`);
+  else if (rule.max != null) parts.push(`${rule.max} or below`);
+  return parts.join(", ");
+}
+
+/** Does this run meet the rule? */
+export function meetsExpectation(row, value) {
+  const rule = readExpectation(value);
+  if (!rule || !row || row.answer == null) return null;
+  if (rule.answer && String(row.answer) !== String(rule.answer)) return false;
+  if (rule.minP != null) {
+    const p = row.type === "noul" && rule.answer
+      ? (row.distribution?.[rule.answer] ?? row.p)
+      : (rule.answer ? (row.distribution?.[rule.answer] ?? row.p) : row.p);
+    if (!Number.isFinite(p) || p < rule.minP) return false;
+  }
+  const value_ = row.type === "score" ? row.value : null;
+  if (rule.min != null && (!Number.isFinite(value_) || value_ < rule.min)) return false;
+  if (rule.max != null && (!Number.isFinite(value_) || value_ > rule.max)) return false;
+  return true;
+}
+
+/** How many runs met the rule. */
+export function passRate(rows, value) {
+  const rule = readExpectation(value);
   const answered = (rows || []).filter((row) => row && row.answer != null);
-  if (!expected || !answered.length) return null;
-  const passed = answered.filter((row) => String(row.answer) === String(expected)).length;
+  if (!rule || !answered.length) return null;
+  const passed = answered.filter((row) => meetsExpectation(row, rule)).length;
   return { passed, n: answered.length, rate: passed / answered.length };
 }

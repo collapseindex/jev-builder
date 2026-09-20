@@ -538,7 +538,7 @@ test('an expectation turns runs into PASS or FAIL, and repeats are remembered', 
 
   const expect = find(app.get('eval-expect'), (node) => node.tag === 'select');
   choose(expect, 'yes');
-  assert.equal(JSON.parse(app.stored.get(STORE)).questions[0].expect, 'yes');
+  assert.deepEqual(JSON.parse(app.stored.get(STORE)).questions[0].expect, { answer: 'yes' });
 
   const stat = (label) => app.get('eval-stats').children
     .map((cell) => cell.children.map((part) => part.textContent))
@@ -553,6 +553,19 @@ test('an expectation turns runs into PASS or FAIL, and repeats are remembered', 
 
   assert.deepEqual(core.passRate([{ answer: 'yes' }, { answer: 'no' }], 'yes'), { passed: 1, n: 2, rate: 0.5 });
   assert.equal(core.passRate([{ answer: 'yes' }], ''), null);
+
+  // A threshold is part of the rule: the same answer can pass or fail on it.
+  const weak = { type: 'noul', answer: 'yes', p: 0.62, distribution: { yes: 0.62, no: 0.38 } };
+  const strong = { type: 'noul', answer: 'yes', p: 0.97, distribution: { yes: 0.97, no: 0.03 } };
+  assert.equal(core.meetsExpectation(weak, { answer: 'yes', minP: 0.8 }), false);
+  assert.equal(core.meetsExpectation(strong, { answer: 'yes', minP: 0.8 }), true);
+  const rated = { type: 'score', answer: '1', value: 0.81, p: 0.8 };
+  assert.equal(core.meetsExpectation(rated, { min: 0.5 }), true);
+  assert.equal(core.meetsExpectation(rated, { min: 1 }), false);
+  assert.equal(core.meetsExpectation(rated, { min: 0.5, max: 0.9 }), true);
+  assert.equal(core.describeExpectation({ answer: 'yes', minP: 0.8 }), 'yes, at 80% or more');
+  assert.equal(core.describeExpectation(''), '');
+  assert.deepEqual(core.readExpectation('yes'), { answer: 'yes' });
   assert.deepEqual(core.answerOptions({ type: 'noul' }), ['yes', 'no']);
   assert.deepEqual(core.answerOptions({ type: 'score', levels: ['a', 'b', 'c'] }), ['0', '1', '2']);
 

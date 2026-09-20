@@ -1162,10 +1162,11 @@
         renderEval();
       };
       const kids = [el('span', { class: 'eval-expect-label', text: 'I expect' })];
-      const options = core.answerOptions(question);
-      kids.push(el('select', { 'aria-label': 'Expected answer', onchange: (event) => save({ answer: event.target.value }) },
-        el('option', { value: '', text: question.type === 'score' ? 'any level' : 'nothing in particular', selected: !rule.answer }),
-        ...options.map((name) => el('option', { value: name, text: name, selected: rule.answer === name }))));
+      if (question.type !== 'score') {
+        kids.push(el('select', { 'aria-label': 'Expected answer', onchange: (event) => save({ answer: event.target.value }) },
+          el('option', { value: '', text: 'nothing in particular', selected: !rule.answer }),
+          ...core.answerOptions(question).map((name) => el('option', { value: name, text: name, selected: rule.answer === name }))));
+      }
 
       // Steps of a tenth, picked from a list: typing 0.83 was never the point.
       const steps = (topValue) => {
@@ -1183,7 +1184,7 @@
       if (question.type === 'score') {
         const topLevel = Math.max(1, (question.levels || []).length - 1);
         const levels = steps(topLevel);
-        kids.push(...chooser('and at least', 'min', rule.min, levels, (value) => value.toFixed(1)),
+        kids.push(...chooser('at least', 'min', rule.min, levels, (value) => value.toFixed(1)),
           ...chooser('at most', 'max', rule.max, levels, (value) => value.toFixed(1)));
       } else {
         kids.push(...chooser('and at least', 'minP', rule.minP, steps(1).slice(1),

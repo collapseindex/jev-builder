@@ -1,6 +1,6 @@
 # jev-builder
 
-**v1.16.1** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.17.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
 A browser form for building requests to [TypeSafe's Jev](https://typesafe.ai). Pick a template,
 fill in the blanks, and copy a working request: for the Playground, for Python, or for the command
@@ -31,10 +31,6 @@ no framework: one HTML file, one stylesheet, one module.
   tab beside the preview keeps every run per question with distribution bars, agreement, mean, standard
   deviation, spread, confidence, latency, tokens, an estimated cost, an answer tally, a spread strip with the mean and one standard deviation, the raw response
   and a Save PNG button.
-- **Say what you expect**, as loosely or as strictly as you like: the answer alone (`yes`), the
-  answer with a floor under it (`yes, at 80% or more`), or a range for a rating (`between 1 and 2`).
-  Every run then reads PASS or FAIL, with a tally of how many met the rule. It is a note to
-  yourself; nothing about it is sent to Jev.
 - **Run once, three times or ten**: repeats are what make the spread and the agreement mean
   anything, and a run in progress can be stopped.
 - **Robustness probes**: run the same request again with changes that carry no meaning (spacing, a

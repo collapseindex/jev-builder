@@ -2,6 +2,13 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.17.0 (2026-09-19)
+
+### Removed
+- Expectations, with their PASS and FAIL. Saying an answer should be yes, and how sure, turned out
+  to earn less than the room it took; the runs, the spread and the probes already say whether a
+  question behaves. Run once, three times or ten stays.
+
 ## v1.16.1 (2026-09-19)
 
 ### Changed

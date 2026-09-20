@@ -78,7 +78,6 @@
           <nav id="eval-questions" class="eval-questions" aria-label="Questions with runs"></nav>
           <div class="eval-main">
             <h2 id="eval-title" class="sr-only">History</h2>
-            <div class="eval-expect" id="eval-expect"></div>
             <div class="eval-actions">
               <button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button>
               <div class="run-count seg" role="radiogroup" aria-label="Runs per press" id="run-count"></div>
@@ -1056,7 +1055,6 @@
         : '';
 
       const question = model.questions.find((q) => text(q.key).trim() === evalKey);
-      renderExpect(question, rows);
       const latestBox = document.getElementById('eval-latest');
       if (!latest) {
         const inDraft = model.questions.some((q) => text(q.key).trim() === evalKey);
@@ -1076,10 +1074,7 @@
         el('p', { class: 'eval-question', text: latest.question || evalKey }),
         el('p', { class: 'eval-answer' },
           el('strong', { text: latest.type === 'score' ? fmt(latest.value) : latest.answer }),
-          el('span', { class: 'eval-sub', text: latest.type === 'score' ? ` of ${Math.max(0, entries.length - 1)}` : ` at ${percent(latest.p)}` }),
-          question?.expect ? el('span', { class: 'verdict ' + (core.meetsExpectation(latest, question.expect) ? 'pass' : 'fail'),
-            title: 'Expected: ' + core.describeExpectation(question.expect),
-            text: core.meetsExpectation(latest, question.expect) ? 'PASS' : 'FAIL' }) : null),
+          el('span', { class: 'eval-sub', text: latest.type === 'score' ? ` of ${Math.max(0, entries.length - 1)}` : ` at ${percent(latest.p)}` })),
         ...entries.map(([name, value]) => el('div', { class: 'eval-bar' },
           el('span', { class: 'eval-bar-label', text: labelFor(latest, name) }),
           el('span', { class: 'eval-bar-track' }, el('span', { class: 'eval-bar-fill', style: `width:${Math.max(0, Math.min(1, value)) * 100}%` })),
@@ -1087,10 +1082,8 @@
         el('p', { class: 'eval-sub', text: `confidence ${percent(latest.confidence)} · ${latest.ms == null ? '—' : latest.ms + ' ms'} · ${latest.inputTokens} in / ${latest.outputTokens} out · ${latest.source}` }));
 
       const cost = core.estimateCost(stats.inputTokens);
-      const expectation = question?.expect ? core.passRate(rows, question.expect) : null;
       const cells = [
         ['runs', String(stats.n) + (probeRows.length ? ` + ${probeRows.length} probes` : '')],
-        ...(expectation ? [['passed', `${expectation.passed} of ${expectation.n}`]] : []),
         ['most common', stats.modal ?? '—'],
         ['agreement', percent(stats.agreement)],
         ['mean', fmt(stats.mean)],
@@ -1107,7 +1100,7 @@
       document.getElementById('eval-history').replaceChildren(
         el('h3', { text: `every run (${rows.length})` }),
         el('table', { class: 'eval-table' },
-          el('thead', {}, el('tr', {}, ...['when', 'answer', 'p', 'conf', 'ms', 'tokens', 'from', ...(question?.expect ? ['ok'] : [])].map((head) => el('th', { text: head })))),
+          el('thead', {}, el('tr', {}, ...['when', 'answer', 'p', 'conf', 'ms', 'tokens', 'from'].map((head) => el('th', { text: head })))),
           el('tbody', {}, ...rows.slice().reverse().slice(0, 50).map((run) => el('tr', {},
             el('td', { text: new Date(run.at).toLocaleTimeString() }),
             el('td', { text: run.type === 'score' ? fmt(run.value) : run.answer }),
@@ -1115,9 +1108,7 @@
             el('td', { text: percent(run.confidence) }),
             el('td', { text: run.ms == null ? '—' : String(run.ms) }),
             el('td', { text: String((run.inputTokens || 0) + (run.outputTokens || 0)) }),
-            el('td', { text: run.source }),
-            question?.expect ? el('td', { class: core.meetsExpectation(run, question.expect) ? 'ok' : 'not-ok',
-              text: core.meetsExpectation(run, question.expect) ? '✓' : '✗' }) : null)))));
+            el('td', { text: run.source }))))));
       drawChart(rows);
       const lastPass = probeRows[probeRows.length - 1]?.pass || '';
       const passProbes = lastPass ? probeRows.filter((run) => run.pass === lastPass) : probeRows;
@@ -1140,65 +1131,6 @@
       box.replaceChildren(
         el('span', { class: 'eval-scope-note', text: `${shown} of ${total} runs match the request as it stands; the rest are from earlier edits.` }),
         chip('current', 'This request'), chip('all', 'All runs'));
-    }
-
-    /**
-     * An expectation is a note to yourself: say what this question should
-     * answer for the text in front of you, and every run says PASS or FAIL.
-     * It is part of the draft, not of the request, so it changes nothing that
-     * is sent.
-     */
-    function renderExpect(question, rows) {
-      const box = document.getElementById('eval-expect');
-      if (!question) { box.replaceChildren(); return; }
-      const rule = core.readExpectation(question.expect) || {};
-      const save = (changes) => {
-        const next = { ...rule, ...changes };
-        for (const [name, value] of Object.entries(next)) {
-          if (value === '' || value == null) delete next[name];
-        }
-        question.expect = Object.keys(next).length ? next : '';
-        changed(false);
-        renderEval();
-      };
-      const kids = [el('span', { class: 'eval-expect-label', text: 'I expect' })];
-      if (question.type !== 'score') {
-        kids.push(el('select', { 'aria-label': 'Expected answer', onchange: (event) => save({ answer: event.target.value }) },
-          el('option', { value: '', text: 'nothing in particular', selected: !rule.answer }),
-          ...core.answerOptions(question).map((name) => el('option', { value: name, text: name, selected: rule.answer === name }))));
-      }
-
-      // Steps of a tenth, picked from a list: typing 0.83 was never the point.
-      const steps = (topValue) => {
-        const out = [];
-        for (let value = 0; value <= topValue + 1e-9; value += 0.1) out.push(Math.round(value * 10) / 10);
-        return out;
-      };
-      const chooser = (label, name, current, values, format) => [
-        el('span', { class: 'eval-expect-label', text: label }),
-        el('select', { 'aria-label': label, onchange: (event) => save({ [name]: event.target.value }) },
-          el('option', { value: '', text: 'any', selected: current == null }),
-          ...values.map((value) => el('option', { value: String(value), text: format(value),
-            selected: current != null && Math.abs(Number(current) - value) < 1e-9 }))),
-      ];
-      if (question.type === 'score') {
-        const topLevel = Math.max(1, (question.levels || []).length - 1);
-        const levels = steps(topLevel);
-        kids.push(...chooser('at least', 'min', rule.min, levels, (value) => value.toFixed(1)),
-          ...chooser('at most', 'max', rule.max, levels, (value) => value.toFixed(1)));
-      } else {
-        kids.push(...chooser('and at least', 'minP', rule.minP, steps(1).slice(1),
-          (value) => Math.round(value * 100) + '%'));
-      }
-
-      const report = core.passRate(rows, question.expect);
-      if (report) {
-        const all = report.passed === report.n;
-        kids.push(el('span', { class: 'verdict ' + (all ? 'pass' : report.passed ? 'mixed' : 'fail'),
-          title: 'Expected: ' + core.describeExpectation(question.expect),
-          text: all ? `PASS · ${report.n}/${report.n}` : `${report.passed} of ${report.n} passed` }));
-      }
-      box.replaceChildren(...kids);
     }
 
     /** What the probes did to the answer, worst first. */

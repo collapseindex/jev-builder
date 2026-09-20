@@ -39,7 +39,6 @@
       <button type="button" class="ghost" id="history-button" title="Every run kept in this browser">History</button>
     </div>
     <div class="top-right">
-      <span class="runner-state" id="runner-state"></span>
       <p class="save-note" id="save-note" role="status">Draft stays in this browser</p>
     </div>
   </div>
@@ -817,8 +816,7 @@
       const ready = runner.runner && runner.keyed;
       button.title = ready ? 'Send this request to Jev through your own runner'
                            : 'Running needs the local runner: npm start with TYPESAFE_API_KEY';
-      document.getElementById('runner-state').textContent = ready ? 'runner ready'
-        : runner.runner ? 'runner has no key' : 'no runner: paste a response instead';
+      button.classList.toggle('waiting', !ready);
     }
 
     async function runNow() {

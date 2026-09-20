@@ -11,7 +11,7 @@ a{color:var(--accent);text-underline-offset:4px}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .skip{position:fixed;top:8px;left:8px;z-index:10;padding:12px;background:var(--field);transform:translateY(-160%)}
 .skip:focus{transform:none}
-.top{padding:6px 16px;display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;border-bottom:1px solid var(--rule)}.top-left,.top-center,.top-right{display:flex;align-items:center;gap:10px;min-width:0}.top-right{justify-content:flex-end}.top-center #run-button{min-height:32px;padding:6px 20px}.top-center #history-button{min-height:32px}
+.top{padding:6px 16px;display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;border-bottom:1px solid var(--rule)}.top-left,.top-right{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden}.top-center{display:flex;align-items:center;gap:8px;justify-self:center}.top-left>*,.top-right>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-right{justify-content:flex-end}.top-center #run-button{min-height:32px;padding:6px 20px}.top-center #history-button{min-height:32px}
 .wordmark{font-weight:750;font-size:16px;letter-spacing:-.6px;color:var(--text);text-decoration:none;white-space:nowrap}
 .wordmark span{font-weight:400;color:var(--muted)}
 .top-label{font-size:12px;color:var(--muted);display:flex;gap:12px;align-items:center}
@@ -176,7 +176,6 @@ button.ghost.danger{color:var(--bad)}
 .eval-table td{padding:6px 8px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:11px;white-space:nowrap}.eval-table tr:hover td{background:var(--soft)}
 @media(max-width:600px){.eval-body{grid-template-columns:minmax(0,1fr)}.eval-questions{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--rule)}.eval-panel{height:calc(100dvh - 16px)}}
 
-.runner-state{font-size:11px;color:var(--muted)}
 
 .shell{display:flex;min-width:0}
 .workspace{flex:1;min-width:0}
@@ -197,4 +196,8 @@ button.ghost.danger{color:var(--bad)}
 .rail .theme-toggle{margin-top:auto;border-top:1px solid var(--rule);border-radius:0;color:var(--muted)}
 .rail.closed .theme-toggle{justify-content:center;padding:8px 0}
 @media(max-width:900px){.rail .theme-toggle{margin-top:0;border-top:0;margin-left:auto}}
-@media(max-width:600px){.runner-state{display:none}.top{grid-template-columns:auto 1fr auto;padding:6px 12px}.top-label{display:none}.save-note{display:none}}
+@media(max-width:600px){.top{grid-template-columns:auto auto 1fr;padding:6px 12px}.top-label{display:none}.save-note{display:none}}
+
+.top .save-note{margin:0}
+#run-button.waiting{background:transparent;color:var(--muted);border:1px solid var(--rule)}
+#run-button.waiting:hover{color:var(--text);border-color:var(--muted)}

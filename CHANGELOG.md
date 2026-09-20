@@ -2,6 +2,12 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.19.0 (2026-09-19)
+
+### Added
+- A README section on taking the thing: what the licence allows, and the handful of places worth
+  editing (the template array, the endpoint constant, hosting it anywhere, importing the core).
+
 ## v1.18.1 (2026-09-19)
 
 ### Added

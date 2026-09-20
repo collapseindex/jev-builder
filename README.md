@@ -1,6 +1,6 @@
 # jev-builder
 
-**v1.18.1** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.19.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
 Type or paste your text, say what you want [TypeSafe's Jev](https://typesafe.ai) to decide about it,
 and get a request you can run. Then run it a few times and see whether the answer holds.
@@ -122,6 +122,28 @@ dinostomp, which catches a template that looks fine but would not run.
 The page collects nothing and never holds your key; the runner keeps it on your machine, listens on
 loopback only, and answers just its own page. What is protected, what is not, and where to report a
 problem: [SECURITY.md](SECURITY.md).
+
+## Take it and do what you like
+
+Apache-2.0, so fork it, rename it, ship it inside your company, put it behind your own domain. No
+permission needed and no credit demanded beyond keeping the licence and the notice.
+
+It is deliberately easy to hack on. There is no build step and no framework, so the app you edit is
+the app that ships: open `index.html`, change it, reload. A few things people are likely to want:
+
+- **Your own templates.** `TEMPLATES` in `jev-builder-core.js` is a plain array. Delete the ones you
+  will never use, add your own policies, ship a copy where every question your team asks is already
+  in the library.
+- **Somewhere else to run.** `JEV_URL` in `scripts/serve.mjs` is one constant. Point it at a gateway,
+  a proxy with your own quota, or a mock while you work offline.
+- **Host it anywhere.** The whole site is static files, so any host that serves a folder will do:
+  GitHub Pages, Cloudflare Pages, S3, nginx, a USB stick.
+- **Keep it internal.** Nothing phones home, so a copy on a machine with no internet still writes
+  requests; only Run needs the network.
+- **Take the parts.** `jev-builder-core.js` touches no DOM: the generators, the validation, the
+  tokenizer and the statistics all import cleanly into something else.
+
+If you build something with it, an issue or a link is welcome, though not required.
 
 ## Contributing
 

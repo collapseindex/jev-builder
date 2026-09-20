@@ -2,6 +2,12 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.10.0 (2026-09-19)
+
+### Changed
+- Run moves into the Evals tab, beside Robustness, Save PNG and Clear, so it sits with the results
+  it produces. The top bar keeps the name and the draft note.
+
 ## v1.9.1 (2026-09-19)
 
 ### Fixed

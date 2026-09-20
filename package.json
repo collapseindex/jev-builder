@@ -1,6 +1,6 @@
 {
   "name": "jev-builder",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "private": true,
   "type": "module",
   "description": "A browser form for building requests to TypeSafe's Jev: pick a template, fill in the blanks, copy the request.",

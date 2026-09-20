@@ -2,6 +2,14 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.7.0 (2026-09-19)
+
+### Changed
+- What the answers mean is always open for a yes-or-no question, in the same fields as the rest,
+  instead of a fold.
+- Placeholders show a concrete example rather than advice: a real question, a real level on a
+  scale, a real option and what it covers.
+
 ## v1.6.0 (2026-09-19)
 
 ### Changed

@@ -77,8 +77,6 @@ textarea.source-editor{display:block;flex:1;width:100%;height:100%;min-height:60
 .question-body{flex:1;min-height:0;overflow:auto;padding:0 16px 12px;overscroll-behavior:contain}
 .question-fields{padding-bottom:10px;border-bottom:1px solid var(--rule)}
 .question-fields textarea{border:0;border-bottom:1px solid var(--rule);border-radius:0;padding:6px 0 10px;background:transparent;resize:vertical;font-family:var(--sans);font-size:13px;line-height:1.7}.question-fields textarea:focus,.question-fields textarea:focus-visible{outline:0;border-bottom-color:var(--accent)}.rowline input:focus,.rowline input:focus-visible{outline:0}.rowline:focus-within{box-shadow:inset 0 -1px 0 var(--accent)}
-.answer-guidance{margin-top:10px}
-.answer-guidance summary{font-size:12px;color:var(--muted);cursor:pointer}
 .question-fields>.buttons{margin-top:10px!important}.add-question{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 8px}.add-question button{border:1px dashed var(--rule);color:var(--muted);font-weight:500}.add-question button:hover{border-style:solid;color:var(--text)}
 .question-fields>.buttons button{border:0;padding:4px 0;min-height:28px;font-size:11px}
 #preview-output{display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto}

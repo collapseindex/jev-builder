@@ -571,18 +571,20 @@
       const parts = [
         el('div', { class: 'label-help' }, el('span', { text: 'Kind of answer' }), help(core.TYPE_HINTS[q.type], 'About this answer type')), typeButtons,
         ...field('Your question', textArea(q.instructions, (v) => { q.instructions = v; renameAuto(q); nameInput.value = q.key; }, { placeholder: {
-          noul: 'Is this message urgent?', score: 'How well written is this?', choice: 'Which team should handle this?' }[q.type], style: 'min-height: 70px' }))];
+          noul: 'e.g. Does this message need a human today?', score: 'e.g. Rate how clear this writing is', choice: 'e.g. Which team should handle this message?' }[q.type], style: 'min-height: 70px' }))];
       if (q.type === 'noul') {
-        // Already filled in (a template, or earlier editing): show it open.
-        const guided = Boolean((q.trueMeans || '').trim() || (q.falseMeans || '').trim());
-        parts.push(el('details', { class: 'answer-guidance', open: guided }, el('summary', {}, 'Answer guidance (optional) ', help('Spelling these out usually makes the answers more consistent.', 'About answer guidance')), el('div', { class: 'grid2' },
-          el('div', {}, ...field('What counts as yes? (optional)', textArea(q.trueMeans, (v) => { q.trueMeans = v; }, { placeholder: 'e.g. something is broken or costing money right now', style: 'min-height: 70px' }))),
-          el('div', {}, ...field('What counts as no? (optional)', textArea(q.falseMeans, (v) => { q.falseMeans = v; }, { placeholder: 'e.g. a question or a thank-you that can wait', style: 'min-height: 70px' }))))));
+        parts.push(el('div', { class: 'label-help' }, el('span', { text: 'What the answers mean' }),
+          help('Spelling these out usually makes the answers more consistent.', 'About answer guidance')),
+          el('div', { class: 'grid2' },
+            el('div', {}, ...field('Yes means (optional)', textArea(q.trueMeans, (v) => { q.trueMeans = v; },
+              { placeholder: 'e.g. a payment failed and money is stuck today', style: 'min-height: 64px' }))),
+            el('div', {}, ...field('No means (optional)', textArea(q.falseMeans, (v) => { q.falseMeans = v; },
+              { placeholder: 'e.g. asking how to change a password', style: 'min-height: 64px' })))));
       }
       if (q.type === 'score') {
         parts.push(el('div', { class: 'label-help' }, el('span', { text: 'The scale, worst to best' }), help('Jev answers with a number on this scale (0 is the first level) and how sure it is.', 'About the rating scale')),
           ...q.levels.map((lv, j) => el('div', { class: 'rowline' }, el('span', { class: 'n', text: String(j) }),
-            el('div', { class: 'grow' }, textInput(lv, (v) => { q.levels[j] = v; }, { placeholder: j === 0 ? 'the worst level, e.g. Weak: generic and unclear' : j === q.levels.length - 1 ? 'the best level, e.g. Excellent: vivid and memorable' : 'a level in between' })),
+            el('div', { class: 'grow' }, textInput(lv, (v) => { q.levels[j] = v; }, { placeholder: j === 0 ? 'e.g. Weak: clichéd images, hard to follow' : j === q.levels.length - 1 ? 'e.g. Excellent: vivid, specific, memorable' : 'e.g. Average: clear but unremarkable' })),
             el('button', { type: 'button', class: 'ghost', text: '↑', title: 'Move up', 'aria-label': 'Move up', disabled: j === 0, onclick: () => { [q.levels[j - 1], q.levels[j]] = [q.levels[j], q.levels[j - 1]]; changed(true); } }),
             el('button', { type: 'button', class: 'ghost danger', text: '×', title: 'Remove', 'aria-label': 'Remove', disabled: q.levels.length <= 2, onclick: () => { q.levels.splice(j, 1); changed(true); } }))),
           el('div', { class: 'buttons' }, el('button', { type: 'button', class: 'ghost', text: '+ Add a level', onclick: () => { q.levels.push(''); changed(true); } })));
@@ -590,8 +592,8 @@
       if (q.type === 'choice') {
         parts.push(el('label', { text: 'The options' }),
           ...q.options.map((o, j) => el('div', { class: 'rowline' },
-            el('div', { style: 'flex: 0 0 30%' }, textInput(o.name, (v) => { o.name = v; }, { placeholder: 'short name, e.g. billing', 'aria-label': 'option name' })),
-            el('div', { class: 'grow' }, textInput(o.description, (v) => { o.description = v; }, { placeholder: 'what it means, e.g. payments and refunds', 'aria-label': 'what it means' })),
+            el('div', { style: 'flex: 0 0 30%' }, textInput(o.name, (v) => { o.name = v; }, { placeholder: 'e.g. billing', 'aria-label': 'option name' })),
+            el('div', { class: 'grow' }, textInput(o.description, (v) => { o.description = v; }, { placeholder: 'e.g. payments, invoices and refunds', 'aria-label': 'what it means' })),
             el('button', { type: 'button', class: 'ghost danger', text: '×', title: 'Remove', 'aria-label': 'Remove', disabled: q.options.length <= 2, onclick: () => { q.options.splice(j, 1); changed(true); } }))),
           el('div', { class: 'buttons' }, el('button', { type: 'button', class: 'ghost', text: '+ Add an option', onclick: () => { q.options.push({ name: '', description: '' }); changed(true); } })));
       }

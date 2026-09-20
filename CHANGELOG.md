@@ -2,6 +2,12 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.18.1 (2026-09-19)
+
+### Added
+- Three screenshots in the README: the builder with its request, the template library, and the
+  Answers tab after eleven runs.
+
 ## v1.18.0 (2026-09-19)
 
 ### Changed

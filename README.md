@@ -1,9 +1,13 @@
 # jev-builder
 
-**v1.18.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.18.1** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
 Type or paste your text, say what you want [TypeSafe's Jev](https://typesafe.ai) to decide about it,
 and get a request you can run. Then run it a few times and see whether the answer holds.
+
+![The builder with a rating question on the left and the request JSON on the right](docs/preview.png)
+
+The text goes in as it is; the request is written as you type.
 
 ## Why it exists
 
@@ -59,6 +63,10 @@ no framework: one HTML file, one stylesheet, one module.
 Open <https://collapseindex.github.io/jev-builder/>. Nothing to install, and nothing you type leaves
 the page.
 
+![The template library, categories down the side, templates grouped by category](docs/templates.png)
+
+Start from a template or start blank. Your own drafts can be saved here too.
+
 ## Running a request
 
 Jev's API refuses cross-origin browser requests, so no web page can call it, whatever it does with
@@ -80,6 +88,10 @@ to Jev with your key.
 
 On the hosted page there is no runner, so Run says so and offers **Paste a response** instead: run
 the request wherever you like, paste back what Jev answered, and it is recorded the same way.
+
+![The Answers tab: the latest answer, the figures, the spread of eleven runs and the run table](docs/answers.png)
+
+Eleven runs of the same request: what it answered, how far it moved, and what each one cost.
 
 Runs are kept in your browser's local storage, up to 200, and can be cleared per question.
 

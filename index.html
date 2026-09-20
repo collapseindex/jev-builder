@@ -64,12 +64,6 @@
           </div>
           <span id="preview-help"></span>
           <span class="token-count" id="token-count"></span>
-          <div class="eval-actions" id="eval-actions" hidden>
-            <button type="button" class="ghost" id="eval-probe" title="Run the same request again with content-free changes">Robustness</button>
-            <button type="button" class="ghost" id="eval-paste">Paste a response</button>
-            <button type="button" class="ghost" id="eval-png">Save PNG</button>
-            <button type="button" class="ghost danger" id="eval-clear">Clear</button>
-          </div>
           <label class="sr-only" for="output-format">Output format</label>
           <select id="output-format" aria-describedby="preview-note"></select>
         </div>
@@ -79,6 +73,11 @@
           <nav id="eval-questions" class="eval-questions" aria-label="Questions with runs"></nav>
           <div class="eval-main">
             <h2 id="eval-title" class="sr-only">History</h2>
+            <div class="eval-actions" id="eval-actions">
+              <button type="button" class="ghost" id="eval-probe" title="Run the same request again with content-free changes">Robustness</button>
+              <button type="button" class="ghost" id="eval-png">Save PNG</button>
+              <button type="button" class="ghost danger" id="eval-clear">Clear</button>
+            </div>
             <p class="eval-sub" id="eval-meta"></p>
             <div id="eval-latest" class="eval-latest"></div>
             <div id="eval-stats" class="eval-stats"></div>
@@ -946,7 +945,6 @@
       const evals = paneMode === 'evals';
       document.getElementById('preview-output').hidden = evals;
       document.getElementById('eval-view').hidden = !evals;
-      document.getElementById('eval-actions').hidden = !evals;
       document.getElementById('output-format').hidden = evals;
       document.getElementById('token-count').hidden = evals;
       document.getElementById('preview-help').hidden = evals;
@@ -1228,7 +1226,6 @@
     document.getElementById('tab-preview').addEventListener('click', () => showPane('preview'));
     document.getElementById('tab-evals').addEventListener('click', () => openEval(evalKey || model.questions[0]?.key || ''));
     document.getElementById('eval-png').addEventListener('click', saveChartPng);
-    document.getElementById('eval-paste').addEventListener('click', () => pasteResponse());
     document.getElementById('eval-probe').addEventListener('click', runProbes);
     document.getElementById('eval-clear').addEventListener('click', () => askConfirmation(
       'Clear the runs for this question?', 'Only ' + (evalKey || 'this question') + ' is cleared, and this cannot be undone.', 'Clear', () => {

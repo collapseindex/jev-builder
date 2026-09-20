@@ -2,6 +2,17 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.9.1 (2026-09-19)
+
+### Fixed
+- The preview and the evals no longer draw at once: a pane's own display rule was beating the
+  hidden attribute, which left the two overlapping and clipped.
+
+### Changed
+- Robustness, Save PNG and Clear sit inside the report they act on, not in the pane's heading.
+- The Paste a response button is gone; Run still offers pasting when there is no runner, which is
+  the only time it is needed.
+
 ## v1.9.0 (2026-09-19)
 
 ### Changed

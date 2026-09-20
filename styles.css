@@ -205,8 +205,10 @@ button.ghost.danger{color:var(--bad)}
 .pane-tabs button{font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:var(--muted);padding:5px 10px;border-radius:6px}
 .pane-tabs button:hover{color:var(--text)}
 .pane-tabs button[aria-selected=true]{background:var(--field);color:var(--text)}
-.panel-heading .eval-actions{margin-left:auto}
-.panel-heading .eval-actions button{min-height:30px;padding:5px 10px}
 .eval-questions button{white-space:nowrap}
 .eval-view .eval-main{gap:16px}
-@media(max-width:600px){.panel-heading .eval-actions{width:100%;margin-left:0}}
+
+/* A hidden pane must stay hidden, whatever display its own rule asks for. */
+#preview-output[hidden],.eval-view[hidden],[hidden]{display:none!important}
+.eval-view .eval-actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px}
+.eval-view .eval-actions button{min-height:30px;padding:5px 10px}

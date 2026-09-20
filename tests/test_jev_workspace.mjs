@@ -375,7 +375,9 @@ test('a pasted response is recorded, summarised and kept per question', () => {
   const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
   const key = JSON.parse(app.stored.get(STORE)).questions[0].key;
   const paste = (noul) => {
-    app.get('eval-paste').events.click();
+    app.get('run-button').events.click();          // no runner here, so it offers pasting instead
+    app.get('confirm-accept').events.click();
+    app.get('confirm-dialog').events.close();
     app.get('paste-input').value = JSON.stringify({
       model: 'jev-1.13.0', answers: { [key]: { type: 'noul', noul } },
       usage: { input_tokens: 300, output_tokens: 23 },
@@ -454,11 +456,9 @@ test('the right pane switches between the preview and the evals', () => {
   const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
   assert.equal(app.get('eval-view').hidden, true);
   assert.equal(app.get('preview-output').hidden, false);
-  assert.equal(app.get('eval-actions').hidden, true);
   app.get('tab-evals').events.click();
   assert.equal(app.get('eval-view').hidden, false);
   assert.equal(app.get('preview-output').hidden, true);
-  assert.equal(app.get('eval-actions').hidden, false);
   assert.equal(app.get('output-format').hidden, true);
   assert.equal(app.get('tab-evals').attrs['aria-selected'], 'true');
   app.get('tab-preview').events.click();

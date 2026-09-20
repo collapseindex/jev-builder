@@ -306,6 +306,12 @@
       svg.append(path);
       return svg;
     }
+    // Called on a theme change, which can happen before the evals exist.
+    function redrawEvalChart() {
+      try {
+        if (paneMode === 'evals') drawChart(runsFor(evalKey));
+      } catch { /* the evals are not set up yet */ }
+    }
     function syncTheme() {
       const dark = document.documentElement.dataset.theme !== 'light';
       const button = document.getElementById('theme-toggle');
@@ -313,6 +319,7 @@
       button.title = dark ? 'Light mode' : 'Dark mode';
       button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to charcoal dark mode');
       document.querySelector('meta[name="theme-color"]').content = dark ? '#1c1c1e' : '#ffffff';
+      redrawEvalChart();        // painted pixels: they have to be drawn again in the new colours
     }
     document.getElementById('theme-toggle').addEventListener('click', () => {
       const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';

@@ -1,5 +1,5 @@
-:root{color-scheme:dark;--bg:#1c1c1e;--text:#f2f2f4;--muted:#a3a3ac;--rule:#38383d;--field:#232326;--soft:#2a2a2e;--accent:#e9e9ee;--tint:#303036;--bad:#f2a49c;--code-bg:#161618;--code-gutter:#616169;--tok-key:#8fd3ff;--tok-str:#b6e3a8;--tok-num:#f0c987;--tok-lit:#f4a9c0;--tok-punct:#9a9aa6;--tok-comment:#7c7c88;--tok-var:#f2b3d0;--tok-flag:#7fd8c9;--ease:cubic-bezier(.2,.8,.2,1);--fast:160ms;--enter:280ms}
-:root[data-theme=light]{color-scheme:light;--bg:#fff;--text:#1c1c1e;--muted:#63636d;--rule:#e4e4e9;--field:#fff;--soft:#f5f5f7;--accent:#1c1c1e;--tint:#ececf1;--bad:#a33428;--code-bg:#f8f8fa;--code-gutter:#a8a8b2;--tok-key:#1c5fa8;--tok-str:#2f6b3a;--tok-num:#8a5a12;--tok-lit:#a1356c;--tok-punct:#6b6b78;--tok-comment:#7a7a86;--tok-var:#a13a72;--tok-flag:#186b60}
+:root{color-scheme:dark;--bg:#1c1c1e;--text:#f2f2f4;--muted:#a3a3ac;--rule:#38383d;--field:#232326;--soft:#2a2a2e;--accent:#e9e9ee;--tint:#303036;--bad:#f2a49c;--code-bg:#161618;--code-gutter:#616169;--blue:#4c8dff;--tok-key:#8fd3ff;--tok-str:#b6e3a8;--tok-num:#f0c987;--tok-lit:#f4a9c0;--tok-punct:#9a9aa6;--tok-comment:#7c7c88;--tok-var:#f2b3d0;--tok-flag:#7fd8c9;--ease:cubic-bezier(.2,.8,.2,1);--fast:160ms;--enter:280ms}
+:root[data-theme=light]{color-scheme:light;--bg:#fff;--text:#1c1c1e;--muted:#63636d;--rule:#e4e4e9;--field:#fff;--soft:#f5f5f7;--accent:#1c1c1e;--tint:#ececf1;--bad:#a33428;--code-bg:#f8f8fa;--code-gutter:#a8a8b2;--blue:#1d4ed8;--tok-key:#1c5fa8;--tok-str:#2f6b3a;--tok-num:#8a5a12;--tok-lit:#a1356c;--tok-punct:#6b6b78;--tok-comment:#7a7a86;--tok-var:#a13a72;--tok-flag:#186b60}
 *{box-sizing:border-box}
 html{background:var(--bg);scroll-padding-top:24px}
 :root{--sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI Variable Text","Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;--mono:ui-monospace,"Cascadia Code","JetBrains Mono","SF Mono",Consolas,"Liberation Mono",monospace}body{margin:0;color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.55;letter-spacing:.005em;font-variant-ligatures:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -220,3 +220,6 @@ button.ghost.danger{color:var(--bad)}
 .eval-scope-note{font-size:11px;color:var(--muted)}
 .eval-scope button{font:inherit;font-size:11px;background:none;border:1px solid var(--rule);color:var(--muted);border-radius:5px;padding:2px 8px}
 .eval-scope button.on{background:var(--tint);color:var(--text);border-color:var(--muted)}
+
+#tab-evals[aria-selected=true]{background:var(--blue);color:#fff}
+#tab-evals[aria-selected=true]:hover{color:#fff}

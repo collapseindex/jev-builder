@@ -2,6 +2,15 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.12.0 (2026-09-19)
+
+### Fixed
+- The chart follows the theme: it is painted pixels, so switching to light left the old dark
+  picture behind until something else redrew it.
+
+### Changed
+- The Evals tab is blue when it is the one you are on.
+
 ## v1.11.1 (2026-09-19)
 
 ### Changed

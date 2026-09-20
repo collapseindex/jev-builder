@@ -65,7 +65,7 @@
         <div class="panel-heading">
           <div class="pane-tabs" role="tablist" aria-label="Right pane">
             <button type="button" role="tab" id="tab-preview" aria-selected="true" aria-controls="preview-output">Request preview</button>
-            <button type="button" role="tab" id="tab-evals" aria-selected="false" aria-controls="eval-view">Evals</button>
+            <button type="button" role="tab" id="tab-evals" aria-selected="false" aria-controls="eval-view">Answers</button>
           </div>
           <span id="preview-help"></span>
           <span class="token-count" id="token-count"></span>
@@ -77,7 +77,7 @@
         <div id="eval-view" class="eval-view" role="tabpanel" aria-labelledby="tab-evals" hidden>
           <nav id="eval-questions" class="eval-questions" aria-label="Questions with runs"></nav>
           <div class="eval-main">
-            <h2 id="eval-title" class="sr-only">History</h2>
+            <h2 id="eval-title" class="sr-only">Answers</h2>
             <div class="eval-actions">
               <button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button>
               <div class="run-count seg" role="radiogroup" aria-label="Runs per press" id="run-count"></div>
@@ -1049,7 +1049,7 @@
       const stats = core.summariseRuns(rows);
       const latest = all[all.length - 1];
       renderScope(older, everything.length, all.length);
-      document.getElementById('eval-title').textContent = evalKey ? `History · ${evalKey}` : 'History';
+      document.getElementById('eval-title').textContent = evalKey ? `Answers · ${evalKey}` : 'Answers';
       document.getElementById('eval-meta').textContent = latest
         ? `${latest.jev || 'jev'} · last run ${new Date(latest.at).toLocaleString()}`
         : '';

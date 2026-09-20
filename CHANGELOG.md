@@ -2,6 +2,12 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.17.1 (2026-09-19)
+
+### Changed
+- The tab is called Answers, not Evals. It shows what Jev answered and how steady those answers
+  are; calling it an eval suite promised something it is not.
+
 ## v1.17.0 (2026-09-19)
 
 ### Removed

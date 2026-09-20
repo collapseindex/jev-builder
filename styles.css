@@ -214,3 +214,9 @@ button.ghost.danger{color:var(--bad)}
 .eval-view .eval-actions button{min-height:30px;padding:5px 10px}
 
 .eval-view .eval-actions #run-button{min-height:30px;padding:5px 16px}
+
+.eval-scope{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.eval-scope:empty{display:none}
+.eval-scope-note{font-size:11px;color:var(--muted)}
+.eval-scope button{font:inherit;font-size:11px;background:none;border:1px solid var(--rule);color:var(--muted);border-radius:5px;padding:2px 8px}
+.eval-scope button.on{background:var(--tint);color:var(--text);border-color:var(--muted)}

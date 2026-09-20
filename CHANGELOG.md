@@ -2,6 +2,19 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.11.0 (2026-09-19)
+
+### Added
+- Every run records a fingerprint of the request that produced it. The report counts only runs of
+  the request as it stands, says how many older ones exist, and offers All runs to see them.
+
+### Changed
+- The chart drops the trendline for two panels that suit small samples: how often each answer came
+  up, and where the runs fell on the scale with the mean and a one standard deviation band.
+- A robustness pass keeps its own baseline, so probes are compared with the run made beside them
+  rather than whatever ran last.
+- The local runner allows 120 runs a minute instead of 30: it is your key and your machine.
+
 ## v1.10.0 (2026-09-19)
 
 ### Changed

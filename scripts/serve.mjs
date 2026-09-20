@@ -26,7 +26,7 @@ const host = '127.0.0.1';
 const JEV_URL = 'https://api.typesafe.ai/v1/systemone';
 const MAX_BODY_BYTES = 1_000_000;
 const RUN_TIMEOUT_MS = 60_000;
-const RUNS_PER_MINUTE = 30;
+const RUNS_PER_MINUTE = 120;
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',

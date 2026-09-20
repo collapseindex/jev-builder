@@ -465,3 +465,33 @@ test('the right pane switches between the preview and the evals', () => {
   assert.equal(app.get('eval-view').hidden, true);
   assert.equal(app.get('tab-preview').attrs['aria-selected'], 'true');
 });
+
+test('runs are tied to the request that made them', () => {
+  const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
+  const key = JSON.parse(app.stored.get(STORE)).questions[0].key;
+  const paste = (noul) => {
+    app.get('run-button').events.click();
+    app.get('confirm-accept').events.click();
+    app.get('confirm-dialog').events.close();
+    app.get('paste-input').value = JSON.stringify({ answers: { [key]: { type: 'noul', noul } }, usage: {} });
+    app.get('paste-accept').events.click();
+  };
+  paste(0.9);
+  const first = JSON.parse(app.stored.get('jev-builder:runs'))[0];
+  assert.match(first.fingerprint, /^[0-9a-f]{8}$/);
+
+  // Editing the text changes the request, so the older run is not mixed in.
+  type(find(app.get('source-panel'), (node) => node.tag === 'textarea'), 'A different message entirely.');
+  paste(0.2);
+  const runs = JSON.parse(app.stored.get('jev-builder:runs'));
+  assert.equal(runs.length, 2);
+  assert.notEqual(runs[0].fingerprint, runs[1].fingerprint);
+
+  const stat = (label) => app.get('eval-stats').children
+    .map((cell) => cell.children.map((part) => part.textContent))
+    .find(([name]) => name === label)?.[1];
+  assert.equal(stat('runs'), '1');
+  assert.match(app.get('eval-scope').children[0].textContent, /1 of 2 runs/);
+  button(app.get('eval-scope'), 'All runs').events.click();
+  assert.equal(stat('runs'), '2');
+});

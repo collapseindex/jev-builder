@@ -77,6 +77,7 @@
               <button type="button" class="ghost danger" id="eval-clear">Clear</button>
             </div>
             <p class="eval-sub" id="eval-meta"></p>
+            <div class="eval-scope" id="eval-scope"></div>
             <div id="eval-latest" class="eval-latest"></div>
             <div id="eval-stats" class="eval-stats"></div>
             <div class="eval-chart-box"><canvas id="eval-chart" class="eval-chart" role="img" aria-label="Trend of this question's runs"></canvas></div>
@@ -776,7 +777,7 @@
     function runKeys() { return [...new Set(runs.map((run) => run.key))]; }
 
     /** Take a Jev response apart into one row per question it answered. */
-    function recordResponse(data, ms, source, probe = '') {
+    function recordResponse(data, ms, source, probe = '', pass_ = '') {
       const added = [];
       for (const q of model.questions) {
         const key = text(q.key).trim();
@@ -793,6 +794,8 @@
           jev: text(data?.model || ''),
           legend: entry.legend && typeof entry.legend === 'object' ? entry.legend : null,
           probe: probe || '',
+          pass: pass_ || '',
+          fingerprint: core.requestFingerprint(model),
           raw: JSON.stringify(data, null, 2).slice(0, 4000),
           ...answer,
         });
@@ -876,15 +879,16 @@
       const probes = core.probesFor(question);
       button.disabled = true;
       try {
+        const pass_ = 'pass-' + Date.now().toString(36);
         const baseline = await askJev(core.requestBody(model));
-        recordResponse(baseline.data, baseline.ms, 'run');
+        recordResponse(baseline.data, baseline.ms, 'run', '', pass_);
         let done = 0;
         for (const probe of probes) {
           const changed = core.probeModel(model, probe, question.key);
           if (!changed) continue;
           button.textContent = `Probe ${done + 1} of ${probes.length}`;
           const answer = await askJev(core.requestBody(changed));
-          recordResponse(answer.data, answer.ms, 'run', probe);
+          recordResponse(answer.data, answer.ms, 'run', probe, pass_);
           done += 1;
           renderEval();
         }
@@ -963,6 +967,7 @@
       return label ? `${name} · ${text(label).slice(0, 60)}` : name;
     }
 
+    let evalScope = 'current';                 // 'current' request, or 'all' of them
     function renderEval() {
       if (paneMode !== 'evals') return;
       const keys = runKeys();
@@ -971,11 +976,15 @@
         return el('button', { type: 'button', class: key === evalKey ? 'on' : '', onclick: () => { evalKey = key; renderEval(); } },
           el('span', { class: 'navlabel', text: key }), el('span', { class: 'badge', text: String(count) }));
       }));
-      const all = runsFor(evalKey);
+      const here = core.requestFingerprint(model);
+      const everything = runsFor(evalKey);
+      const older = everything.filter((run) => run.fingerprint && run.fingerprint !== here).length;
+      const all = evalScope === 'all' ? everything : everything.filter((run) => !run.fingerprint || run.fingerprint === here);
       const rows = all.filter((run) => !run.probe);
       const probeRows = all.filter((run) => run.probe);
       const stats = core.summariseRuns(rows);
       const latest = all[all.length - 1];
+      renderScope(older, everything.length, all.length);
       document.getElementById('eval-title').textContent = evalKey ? `History · ${evalKey}` : 'History';
       document.getElementById('eval-meta').textContent = latest
         ? `${latest.jev || 'jev'} · last run ${new Date(latest.at).toLocaleString()}`
@@ -1032,8 +1041,27 @@
             el('td', { text: String((run.inputTokens || 0) + (run.outputTokens || 0)) }),
             el('td', { text: run.source }))))));
       drawChart(rows);
-      renderProbes(rows[rows.length - 1] || latest, probeRows);
+      const lastPass = probeRows[probeRows.length - 1]?.pass || '';
+      const passProbes = lastPass ? probeRows.filter((run) => run.pass === lastPass) : probeRows;
+      const passBaseline = lastPass
+        ? rows.slice().reverse().find((run) => run.pass === lastPass)
+        : null;
+      renderProbes(passBaseline || rows[rows.length - 1] || latest, passProbes);
       renderRaw(latest);
+    }
+
+    /**
+     * Runs of the request as it stands now, or every run of this question.
+     * An edit changes the fingerprint, so the two can differ.
+     */
+    function renderScope(older, total, shown) {
+      const box = document.getElementById('eval-scope');
+      if (!older) { box.replaceChildren(); return; }
+      const chip = (mode, label) => el('button', { type: 'button', class: evalScope === mode ? 'on' : '',
+        onclick: () => { evalScope = mode; renderEval(); } }, el('span', { text: label }));
+      box.replaceChildren(
+        el('span', { class: 'eval-scope-note', text: `${shown} of ${total} runs match the request as it stands; the rest are from earlier edits.` }),
+        chip('current', 'This request'), chip('all', 'All runs'));
     }
 
     /** What the probes did to the answer, worst first. */
@@ -1080,70 +1108,109 @@
     }
 
     /**
-     * The trendline: each run in order, with the mean and a one standard
-     * deviation band behind it, drawn into a rectangle so the panel and the
-     * PNG can share one painter.
+     * Two panels, drawn into one rectangle so the page and the PNG share them:
+     * how often each answer came up, and where the runs fell on the scale with
+     * the mean and a one standard deviation band. A line over three runs said
+     * nothing; this says what it usually answers and how much it moves.
      */
     function paintChart(context, rect, rows, options = {}) {
       const style = getComputedStyle(document.documentElement);
       const colour = (name, fallback) => (style.getPropertyValue(name) || fallback).trim() || fallback;
-      const pad = { left: 46, right: 16, top: 14, bottom: 26 };
+      const ink = colour('--text', '#f2f2f4');
+      const muted = colour('--muted', '#a3a3ac');
+      const line = options.line || colour('--accent', '#e9e9ee');
+      const stats = core.summariseRuns(rows);
+      const counts = core.tally(rows);
+      const scoreScale = rows.find((row) => row.type === 'score');
+      const top = scoreScale ? Math.max(1, ...stats.series, ...(Object.keys(rows[rows.length - 1]?.distribution || {}).map(Number).filter(Number.isFinite))) : 1;
+
       context.save();
       context.translate(rect.x, rect.y);
       context.fillStyle = options.background || colour('--code-bg', '#161618');
       context.fillRect(0, 0, rect.width, rect.height);
-      const stats = core.summariseRuns(rows);
-      const series = stats.series;
-      const top = Math.max(1, ...series, 1);
-      const plotWidth = rect.width - pad.left - pad.right;
-      const plotHeight = rect.height - pad.top - pad.bottom;
-      const x = (i) => pad.left + (series.length < 2 ? plotWidth / 2 : (i / (series.length - 1)) * plotWidth);
-      const y = (value) => pad.top + plotHeight - (Math.max(0, Math.min(top, value)) / top) * plotHeight;
+      if (!rows.length) { context.restore(); return; }
 
+      const pad = 16;
+      const labelWidth = Math.min(180, Math.max(90, rect.width * 0.28));
+      const barTop = pad + 14;
+      const barHeight = 16;
+      const gap = 8;
+      const shown = counts.slice(0, 4);
+      context.font = '12px ui-sans-serif, system-ui, sans-serif';
+      context.textBaseline = 'middle';
+      context.fillStyle = muted;
+      context.font = '600 10px ui-sans-serif, system-ui, sans-serif';
+      context.fillText('ANSWERS', pad, pad);
+
+      shown.forEach((row, index) => {
+        const y = barTop + index * (barHeight + gap);
+        context.font = '12px ui-sans-serif, system-ui, sans-serif';
+        context.fillStyle = muted;
+        const label = String(row.answer);
+        context.fillText(label.length > 22 ? label.slice(0, 21) + '…' : label, pad, y + barHeight / 2);
+        const trackLeft = pad + labelWidth;
+        const trackWidth = rect.width - trackLeft - pad - 58;
+        context.fillStyle = colour('--soft', '#2a2a2e');
+        context.fillRect(trackLeft, y, trackWidth, barHeight);
+        context.fillStyle = line;
+        context.fillRect(trackLeft, y, Math.max(2, trackWidth * row.share), barHeight);
+        context.fillStyle = ink;
+        context.font = '11px ui-monospace, Consolas, monospace';
+        context.fillText(`${row.n} · ${Math.round(row.share * 100)}%`, trackLeft + trackWidth + 8, y + barHeight / 2);
+      });
+
+      // The spread: one tick per run on the value axis, the mean, and ±1 sd.
+      const stripTop = barTop + shown.length * (barHeight + gap) + 22;
+      const stripHeight = Math.max(30, rect.height - stripTop - 34);
+      const left = pad + 34;
+      const width = rect.width - left - pad;
+      const x = (value) => left + (Math.max(0, Math.min(top, value)) / top) * width;
+      context.fillStyle = muted;
+      context.font = '600 10px ui-sans-serif, system-ui, sans-serif';
+      context.fillText(scoreScale ? 'WHERE THE RUNS FELL ON THE SCALE' : 'HOW SURE, RUN BY RUN', pad, stripTop - 12);
+
+      if (stats.sd > 0) {
+        context.fillStyle = colour('--tint', '#303036');
+        const from = x(stats.mean - stats.sd);
+        const to = x(stats.mean + stats.sd);
+        context.fillRect(from, stripTop, Math.max(2, to - from), stripHeight);
+      }
+      context.strokeStyle = colour('--rule', '#38383d');
       context.lineWidth = 1;
-      context.font = '11px ui-monospace, Consolas, monospace';
-      for (let step = 0; step <= 4; step += 1) {
-        const value = (top / 4) * step;
-        const at = Math.round(y(value)) + 0.5;
-        context.strokeStyle = colour('--rule', '#38383d');
-        context.beginPath();
-        context.moveTo(pad.left, at);
-        context.lineTo(rect.width - pad.right, at);
-        context.stroke();
-        context.fillStyle = colour('--muted', '#a3a3ac');
-        context.fillText(value.toFixed(2), 8, at + 4);
-      }
-      if (series.length) {
-        if (series.length > 1 && stats.sd > 0) {
-          context.fillStyle = colour('--tint', '#303036');
-          const high = y(stats.mean + stats.sd);
-          const low = y(stats.mean - stats.sd);
-          context.fillRect(pad.left, high, plotWidth, Math.max(1, low - high));
-        }
-        context.strokeStyle = colour('--muted', '#a3a3ac');
-        context.setLineDash([4, 4]);
-        context.beginPath();
-        context.moveTo(pad.left, y(stats.mean));
-        context.lineTo(rect.width - pad.right, y(stats.mean));
-        context.stroke();
-        context.setLineDash([]);
+      context.beginPath();
+      context.moveTo(left, stripTop + stripHeight + 0.5);
+      context.lineTo(left + width, stripTop + stripHeight + 0.5);
+      context.stroke();
 
-        context.strokeStyle = options.line || colour('--accent', '#e9e9ee');
-        context.lineWidth = 2;
+      context.strokeStyle = line;
+      context.lineWidth = 2;
+      context.globalAlpha = rows.length > 20 ? 0.5 : 0.85;
+      for (const value of stats.series) {
+        const at = Math.round(x(value)) + 0.5;
         context.beginPath();
-        series.forEach((value, index) => (index ? context.lineTo(x(index), y(value)) : context.moveTo(x(index), y(value))));
+        context.moveTo(at, stripTop + 4);
+        context.lineTo(at, stripTop + stripHeight - 4);
         context.stroke();
-        context.fillStyle = options.line || colour('--accent', '#e9e9ee');
-        series.forEach((value, index) => {
-          context.beginPath();
-          context.arc(x(index), y(value), 3, 0, Math.PI * 2);
-          context.fill();
-        });
-        context.fillStyle = colour('--muted', '#a3a3ac');
-        context.fillText('run 1', pad.left, rect.height - 8);
-        const last = `run ${series.length}`;
-        context.fillText(last, rect.width - pad.right - context.measureText(last).width, rect.height - 8);
       }
+      context.globalAlpha = 1;
+
+      context.strokeStyle = ink;
+      context.setLineDash([3, 3]);
+      context.beginPath();
+      context.moveTo(Math.round(x(stats.mean)) + 0.5, stripTop);
+      context.lineTo(Math.round(x(stats.mean)) + 0.5, stripTop + stripHeight);
+      context.stroke();
+      context.setLineDash([]);
+
+      context.fillStyle = muted;
+      context.font = '11px ui-monospace, Consolas, monospace';
+      context.textBaseline = 'alphabetic';
+      context.fillText('0', left - 4, stripTop + stripHeight + 18);
+      const topLabel = top.toFixed(top >= 2 ? 0 : 2);
+      context.fillText(topLabel, left + width - context.measureText(topLabel).width, stripTop + stripHeight + 18);
+      const meanLabel = `mean ${stats.mean.toFixed(2)}${stats.sd > 0 ? ` ± ${stats.sd.toFixed(2)}` : ''} · ${rows.length} run${rows.length === 1 ? '' : 's'}`;
+      context.fillStyle = ink;
+      context.fillText(meanLabel, left + (width - context.measureText(meanLabel).width) / 2, stripTop - 12);
       context.restore();
     }
 
@@ -1152,7 +1219,7 @@
       const context = canvas?.getContext?.('2d');
       if (!context) return;                        // no canvas: the numbers still show
       const width = Math.max(320, Math.round(canvas.parentElement?.getBoundingClientRect?.().width || 720));
-      const height = 260;
+      const height = 250;
       const scale = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.round(width * scale);
       canvas.height = Math.round(height * scale);

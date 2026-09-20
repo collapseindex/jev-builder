@@ -1388,3 +1388,32 @@ export function robustness(baseline, probes) {
     || null;
   return { n: compared.length, flips, flipRate: flips / compared.length, maxDelta, worst, rows: compared };
 }
+
+/**
+ * A short identity for a request: two runs share it only when the state and
+ * the questions are identical, so statistics never mix answers to a question
+ * that has since been edited. FNV-1a, because this tells drafts apart in a
+ * browser, it does not protect anything.
+ */
+export function requestFingerprint(model) {
+  const body = JSON.stringify({ state: stateObject(model), questions: questionsObject(model) });
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < body.length; i += 1) {
+    hash ^= body.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+/** How often each answer came up, most common first. */
+export function tally(rows) {
+  const counts = new Map();
+  for (const row of rows || []) {
+    if (!row || row.answer == null) continue;
+    counts.set(String(row.answer), (counts.get(String(row.answer)) || 0) + 1);
+  }
+  const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
+  return [...counts.entries()]
+    .map(([answer, n]) => ({ answer, n, share: total ? n / total : 0 }))
+    .sort((a, b) => b.n - a.n || a.answer.localeCompare(b.answer));
+}

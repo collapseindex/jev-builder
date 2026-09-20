@@ -51,16 +51,33 @@ async function readKey() {
 
 function sendJson(response, status, value) {
   const body = JSON.stringify(value);
-  response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+  response.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+  });
   response.end(body);
 }
 
-/** A page from somewhere else must not be able to spend your key. */
-function sameOrigin(request) {
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * Only this machine's own page may spend your key.
+ *
+ * The Host check is what stops DNS rebinding: a site whose name resolves to
+ * 127.0.0.1 would otherwise reach this runner with a matching Origin. Both
+ * headers have to name a loopback address on this port.
+ */
+function fromOwnPage(request) {
+  const host = String(request.headers.host || '');
+  const hostName = host.replace(/:\d+$/, '');
+  if (!LOCAL_HOSTS.has(hostName)) return false;
+  if (host.includes(':') && !host.endsWith(':' + port) && !hostName.endsWith(']')) return false;
   const origin = request.headers.origin;
-  if (!origin) return true;                       // not a browser request
+  if (!origin) return true;                       // a terminal, not a browser
   try {
-    return new URL(origin).host === request.headers.host;
+    const from = new URL(origin);
+    return LOCAL_HOSTS.has(from.hostname) && from.host === host;
   } catch {
     return false;
   }
@@ -94,7 +111,7 @@ function overRate() {
 }
 
 async function runAgainstJev(request, response) {
-  if (!sameOrigin(request)) return sendJson(response, 403, { error: 'This runner only answers its own page.' });
+  if (!fromOwnPage(request)) return sendJson(response, 403, { error: 'This runner only answers its own page, on this machine.' });
   const key = await readKey();
   if (!key) return sendJson(response, 503, { error: 'No TYPESAFE_API_KEY in this runner\'s environment.' });
   if (overRate()) return sendJson(response, 429, { error: `More than ${RUNS_PER_MINUTE} runs in a minute; wait a moment.` });
@@ -136,6 +153,7 @@ createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
 
   if (url.pathname === '/api/ready') {
+    if (!fromOwnPage(request)) return sendJson(response, 403, { error: 'Not this runner\'s page.' });
     return sendJson(response, 200, { runner: true, keyed: Boolean(await readKey()) });
   }
   if (url.pathname === '/api/run') {
@@ -143,6 +161,10 @@ createServer(async (request, response) => {
     return runAgainstJev(request, response);
   }
 
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    response.writeHead(405, { 'content-type': 'text/plain; charset=utf-8' }).end('GET or HEAD');
+    return;
+  }
   const wanted = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
   const file = resolve(join(root, normalize(wanted)));
   // Never serve anything outside this folder, whatever the path says.
@@ -153,7 +175,10 @@ createServer(async (request, response) => {
   try {
     const info = await stat(file);
     if (!info.isFile()) throw new Error('not a file');
-    response.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream' });
+    response.writeHead(200, {
+      'content-type': TYPES[extname(file)] || 'application/octet-stream',
+      'x-content-type-options': 'nosniff',
+    });
     createReadStream(file).pipe(response);
   } catch {
     response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('Not found');

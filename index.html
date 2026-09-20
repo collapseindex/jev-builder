@@ -4,6 +4,10 @@
   <link rel="stylesheet" href="./styles.css" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Nothing may be loaded from anywhere but this site, and the only thing
+       ever contacted is this page's own runner. The scripts are the page. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
+  <meta name="referrer" content="no-referrer" />
   <title>Ask Jev a question · Collapse Index Labs</title>
   <meta name="description" content="Pick a template or start blank, fill in the blanks, and get a ready-to-use Jev request for the Playground, Python or the command line. Runs in your browser; collects nothing." />
   <meta name="author" content="Alex Kwon" />
@@ -31,7 +35,7 @@
   <a class="skip" href="#main">Skip to builder</a>
   <div class="top">
     <div class="top-left">
-      <a href="https://collapseindex.org" class="wordmark">collapseindex<span>labs</span></a>
+      <a href="https://collapseindex.org" class="wordmark" rel="noreferrer">collapseindex<span>labs</span></a>
       <span class="top-label">Tools <span aria-hidden="true">/</span> Jev builder</span>
     </div>
     <div class="top-right">
@@ -42,6 +46,10 @@
   <aside class="rail" id="rail" aria-label="Actions">
     <button type="button" class="rail-toggle" id="rail-toggle" aria-expanded="true" aria-controls="templates" title="Collapse the actions"><span class="rail-chevron" aria-hidden="true">«</span><span class="rail-label">Actions</span></button>
     <div class="template-bar" id="templates"></div>
+    <a class="rail-button rail-link" href="https://github.com/collapseindex/jev-builder" rel="noreferrer" title="Source on GitHub">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" class="icon"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48l-.01-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.36 1.09 2.94.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85l-.01 2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+      <span class="rail-label">Source on GitHub</span>
+    </a>
     <button type="button" class="ghost rail-button theme-toggle" id="theme-toggle" aria-label="Switch color theme">Theme</button>
   </aside>
   <main class="workspace" id="main" tabindex="-1">
@@ -70,7 +78,7 @@
           <nav id="eval-questions" class="eval-questions" aria-label="Questions with runs"></nav>
           <div class="eval-main">
             <h2 id="eval-title" class="sr-only">History</h2>
-            <div class="eval-actions" id="eval-actions">
+            <div class="eval-actions">
               <button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button>
               <button type="button" class="ghost" id="eval-probe" title="Run the same request again with content-free changes">Robustness</button>
               <button type="button" class="ghost" id="eval-png">Save PNG</button>
@@ -98,7 +106,7 @@
       <button type="button" class="act" id="confirm-accept">Continue</button>
     </div>
   </dialog>
-  <dialog id="name-dialog" class="confirm-dialog" aria-labelledby="name-title">
+  <dialog id="name-dialog" class="confirm-dialog" aria-labelledby="name-title" aria-describedby="name-message">
     <h2 id="name-title">Save as template</h2>
     <p id="name-message">Saved in this browser only, under Your templates.</p>
     <label class="sr-only" for="name-input">Template name</label>

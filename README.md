@@ -1,6 +1,6 @@
 # jev-builder
 
-**v1.13.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.14.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
 A browser form for building requests to [TypeSafe's Jev](https://typesafe.ai). Pick a template,
 fill in the blanks, and copy a working request: for the Playground, for Python, or for the command
@@ -109,6 +109,12 @@ npm run check:templates  # needs `pip install dinostomp` and python on PATH
 The tests read `index.html`, pull out its module and run it against a small DOM stub, so they cover
 what the page actually ships. `check:templates` writes each template's `.jev.yaml` and loads it with
 dinostomp, which is what catches a template that looks fine but would not run.
+
+## Security
+
+The page collects nothing and never holds your key; the runner keeps it on your machine, listens on
+loopback only, and answers just its own page. What it protects against, what it does not, and where
+to report a problem: [SECURITY.md](SECURITY.md).
 
 ## Contributing
 

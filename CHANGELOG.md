@@ -2,6 +2,24 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.14.0 (2026-09-19)
+
+### Security
+- The runner refuses anything but its own page: both Host and Origin must name a loopback address
+  on its port, which closes DNS rebinding, where a site resolving to 127.0.0.1 could otherwise
+  reach it from your browser and spend your key.
+- Static files answer GET and HEAD only, and every response carries X-Content-Type-Options: nosniff.
+- The page declares a Content Security Policy: it may load and connect to nothing but its own
+  origin, cannot be framed, and cannot submit a form. Outbound links send no referrer.
+- SECURITY.md sets out what is protected, what is not, and how to report a problem.
+
+### Added
+- A link to the source repository at the foot of the rail.
+
+### Changed
+- Swept the leftovers a scan turned up: dead stylesheet rules, an unused id, and a dialog that was
+  missing its description.
+
 ## v1.13.0 (2026-09-19)
 
 ### Fixed

@@ -223,3 +223,6 @@ button.ghost.danger{color:var(--bad)}
 
 #tab-evals[aria-selected=true]{background:var(--blue-tab);color:var(--blue-tab-ink)}
 #tab-evals[aria-selected=true]:hover{color:var(--blue-tab-ink)}
+
+.eval-questions button.past{opacity:.6;font-style:italic}
+.eval-questions button.past.on{opacity:1}

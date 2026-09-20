@@ -495,3 +495,30 @@ test('runs are tied to the request that made them', () => {
   button(app.get('eval-scope'), 'All runs').events.click();
   assert.equal(stat('runs'), '2');
 });
+
+test('the evals follow the draft through a template change', () => {
+  const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
+  const firstKey = JSON.parse(app.stored.get(STORE)).questions[0].key;
+  app.get('run-button').events.click();            // no runner: it offers pasting
+  app.get('confirm-accept').events.click();
+  app.get('confirm-dialog').events.close();
+  app.get('paste-input').value = JSON.stringify({ answers: { [firstKey]: { type: 'noul', noul: 0.9 } }, usage: {} });
+  app.get('paste-accept').events.click();
+  assert.equal(app.get('eval-title').textContent.includes(firstKey), true);
+
+  // Take another template: its question leads, the old runs stay, marked as past.
+  chooseTemplate(app, 'review');
+  accept(app);
+  const newKey = JSON.parse(app.stored.get(STORE)).questions[0].key;
+  const chips = app.get('eval-questions').children;
+  const labels = chips.map((chip) => chip.children[0].textContent);
+  assert.equal(labels[0], newKey, 'the draft question comes first');
+  assert.ok(labels.includes(firstKey), 'the earlier runs are still reachable');
+  assert.match(chips[labels.indexOf(firstKey)].className, /past/);
+  assert.equal(app.get('eval-title').textContent.includes(newKey), true);
+  assert.match(app.get('eval-latest').children[0].textContent, /No runs yet/);
+
+  // And the old key says why it is empty of a current draft.
+  chips[labels.indexOf(firstKey)].events.click();
+  assert.equal(app.get('eval-title').textContent.includes(firstKey), true);
+});

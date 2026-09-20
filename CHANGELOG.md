@@ -2,6 +2,19 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.13.0 (2026-09-19)
+
+### Fixed
+- The evals follow the draft. Taking a template, adding a question or editing one now leads with
+  the draft's own questions, instead of leaving an earlier question's history on screen as though
+  it belonged to what is in the editors.
+- Editing anything with the Evals tab open refreshes it, so the runs, the stats and the note about
+  older runs match what the request says now.
+
+### Added
+- Questions with runs that are no longer in the draft stay reachable, marked as past, and say so
+  when empty. Choosing one keeps it until the draft's questions change again.
+
 ## v1.12.2 (2026-09-19)
 
 ### Changed

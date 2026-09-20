@@ -667,7 +667,12 @@
       document.getElementById('questions-panel').replaceChildren(...questionsView().flat().filter(Boolean));
     }
     // Keep editor nodes and cursor intact while typing; only derived output updates.
-    function changed(structural) { save(); if (structural) renderEditors(); refreshPreview(); }
+    function changed(structural) {
+      save();
+      if (structural) renderEditors();
+      refreshPreview();
+      if (paneMode === 'evals') renderEval();
+    }
 
     const formatSelect = document.getElementById('output-format');
     formatSelect.replaceChildren(...Object.entries(FORMATS).map(([key, config]) => el('option', { value: key, text: config.label })));
@@ -975,16 +980,28 @@
     }
 
     let evalScope = 'current';                 // 'current' request, or 'all' of them
+    let evalPinned = false;                    // true once a past question is chosen by hand
+    let draftKeysSeen = '';
     function renderEval() {
       if (paneMode !== 'evals') return;
-      const keys = runKeys();
+      const draftKeys = model.questions.map((q) => text(q.key).trim()).filter(Boolean);
+      const pastKeys = runKeys().filter((key) => !draftKeys.includes(key));
+      const keys = [...draftKeys, ...pastKeys];
+      // A new draft pulls the view back to its own questions, unless a past one
+      // was chosen deliberately.
+      const signature = draftKeys.join('|');
+      if (signature !== draftKeysSeen) { draftKeysSeen = signature; evalPinned = false; }
+      if (!keys.includes(evalKey) || (!evalPinned && !draftKeys.includes(evalKey))) {
+        evalKey = draftKeys[0] || pastKeys[0] || '';
+      }
       document.getElementById('eval-questions').replaceChildren(...keys.map((key) => {
         const forKey = runsFor(key);
         const plain = forKey.filter((run) => !run.probe).length;
         const probed = forKey.length - plain;
-        return el('button', { type: 'button', class: key === evalKey ? 'on' : '',
-          title: probed ? `${plain} runs and ${probed} probe answers` : `${plain} runs`,
-          onclick: () => { evalKey = key; renderEval(); } },
+        const past = !draftKeys.includes(key);
+        return el('button', { type: 'button', class: (key === evalKey ? 'on' : '') + (past ? ' past' : ''),
+          title: (past ? 'Not in this draft any more. ' : '') + (probed ? `${plain} runs and ${probed} probe answers` : `${plain} runs`),
+          onclick: () => { evalKey = key; evalPinned = true; renderEval(); } },
           el('span', { class: 'navlabel', text: key }), el('span', { class: 'badge', text: String(plain) }));
       }));
       const here = core.requestFingerprint(model);
@@ -1003,7 +1020,10 @@
 
       const latestBox = document.getElementById('eval-latest');
       if (!latest) {
-        latestBox.replaceChildren(el('p', { class: 'eval-empty', text: 'No runs yet. Press Run above and the answer, with everything measured about it, appears here.' }));
+        const inDraft = model.questions.some((q) => text(q.key).trim() === evalKey);
+        latestBox.replaceChildren(el('p', { class: 'eval-empty', text: evalKey && !inDraft
+          ? `Nothing left under ${evalKey}: it is not a question in this draft any more.`
+          : 'No runs yet. Press Run above and the answer, with everything measured about it, appears here.' }));
         document.getElementById('eval-stats').replaceChildren();
         document.getElementById('eval-history').replaceChildren();
         document.getElementById('eval-probes').replaceChildren();

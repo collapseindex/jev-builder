@@ -1,60 +1,63 @@
 # jev-builder
 
-**v1.17.1** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.18.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
-A browser form for building requests to [TypeSafe's Jev](https://typesafe.ai). Pick a template,
-fill in the blanks, and copy a working request: for the Playground, for Python, or for the command
-line. No JSON to write and nothing to install.
+Type or paste your text, say what you want [TypeSafe's Jev](https://typesafe.ai) to decide about it,
+and get a request you can run. Then run it a few times and see whether the answer holds.
 
-Jev reads some text (the **state**) and answers **questions** about it: yes or no, a rating on a
-scale you describe, or a pick from your options, each with a probability. Writing that by hand means
-escaping every line break and quote in your text and getting the question shape right. This page
-does both for you, and shows the request as you type.
+## Why it exists
 
-It runs entirely in the browser. No cookies, no analytics, no third-party requests, no build step,
+Writing a Jev request by hand is annoying in two different ways.
+
+The first is mechanical. The state is JSON, so every line break in a lyric, a transcript or an email
+has to become `\n`, every quote has to be escaped, and the indentation has to survive being pasted
+around. Doing that by hand, for a paragraph you only wanted to try, wastes a minute and is a good
+way to introduce a typo you then debug for ten.
+
+The second is that one answer tells you very little. Jev replies with a probability, so the question
+worth asking is not "what did it say" but "does it say that every time, and does it still say it
+when the text is padded with waffle or wrapped in a code fence". Answering that by hand means
+running the same thing over and over and keeping notes.
+
+This page does both. Paste the text as it is and the escaping is done for you. Fill in a question
+and the request is written as you type. Press Run and every answer is kept, with how steady they
+were.
+
+It is not an eval platform and does not want to be: no datasets, no leaderboard, no account. For a
+real harness, with labelled data, pre-registered thresholds and a findings ledger, use
+[dinostomp](https://github.com/collapseindex/dinostomp), which this page can write a question file
+for.
+
+## What you get
+
+- **Paste anything.** Line breaks, quotes, tabs, emoji, backslashes. The JSON is written for you and
+  is valid by construction, because the browser's own `JSON.stringify` does it.
+- **Three kinds of question**: yes or no (`noul`), a rating on a scale you describe (`score`), and a
+  pick from your options (`choice`), with as many questions per request as you like.
+- **34 templates** to start from, across support, moderation, writing, sales, research, engineering
+  and AI evaluation. Six carry a second, constant field (a refund policy, routing rules, a job
+  posting) so the question is judged against a rule instead of a hunch.
+- **The request, four ways**: the full JSON body, the Playground's State and Questions panes, a
+  Python snippet, or a curl command. Coloured, numbered, one click to copy.
+- **Run it** once, three times or ten (see below), and keep every answer: the distribution, how
+  often each answer came up, the mean, the standard deviation, the spread, confidence, latency,
+  tokens, an estimated cost, and the raw response exactly as it arrived.
+- **Robustness probes.** The same request again with changes that carry no meaning: spacing, a code
+  fence, filler, manufactured confidence, an appeal to authority, politeness, and for a pick-one
+  question the options reversed. Anything that moves the answer is worth knowing. The probes and
+  their names match dinostomp's, so a finding here means the same thing there.
+- **Save PNG** of the answer card, for a post or a ticket.
+- **Save your own templates**, kept in your browser, listed under Your templates.
+- **A dinostomp check file**, for when you do want to measure a question against examples you have
+  labelled yourself.
+
+Everything runs in your browser. No cookies, no analytics, no third-party requests, no build step,
 no framework: one HTML file, one stylesheet, one module.
-
-## Features
-
-- **34 templates** across support, moderation, writing, sales, research, engineering and AI
-  evaluation, from rating song lyrics to detecting AI refusals. Six carry a second, constant field
-  (a refund policy, routing rules, a job posting) so the question is judged against a rule.
-- **Three answer types**: yes or no (`noul`), a rating (`score`), and a pick from your options
-  (`choice`), with as many questions per request as you like.
-- **A live preview** in four shapes: the full JSON request, the Playground's State and Questions
-  panes, a Python snippet, and a curl command. Coloured and numbered, with a rough input token
-  estimate.
-- **Save your own templates**: keep a draft under Your templates in the library, reopen it later,
-  delete it when you are done. Kept in your browser only, never uploaded.
-- **Draggable splitters**, a charcoal or white theme, and your draft kept in your own browser.
-- **Run it and keep the runs**: Run sends the request through your own local runner, and the Answers
-  tab beside the preview keeps every run per question with distribution bars, agreement, mean, standard
-  deviation, spread, confidence, latency, tokens, an estimated cost, an answer tally, a spread strip with the mean and one standard deviation, the raw response
-  and a Save PNG button.
-- **Run once, three times or ten**: repeats are what make the spread and the agreement mean
-  anything, and a run in progress can be stopped.
-- **Robustness probes**: run the same request again with changes that carry no meaning (spacing, a
-  code fence, filler, manufactured confidence, an appeal to authority, politeness, and for a
-  pick-one question the options reversed) and see which ones move the answer. The probes and their
-  names match [dinostomp](https://github.com/collapseindex/dinostomp), so a finding here means the
-  same thing there.
-- **A check file** for [dinostomp](https://github.com/collapseindex/dinostomp), so a question can be
-  measured against examples you have labelled before you rely on it.
 
 ## Use it
 
-Open <https://collapseindex.github.io/jev-builder/>. There is nothing to install.
-
-To run it yourself:
-
-```bash
-git clone https://github.com/collapseindex/jev-builder.git
-cd jev-builder
-npm start            # http://localhost:4321
-```
-
-`npm start` is a 40-line static file server with no dependencies; any other static server works too.
-Opening `index.html` straight from disk does not, because browsers refuse ES modules over `file://`.
+Open <https://collapseindex.github.io/jev-builder/>. Nothing to install, and nothing you type leaves
+the page.
 
 ## Running a request
 
@@ -67,56 +70,46 @@ cd jev-builder
 TYPESAFE_API_KEY=... npm start        # or put the key in a .env beside the repo
 ```
 
-`npm start` then serves the page and answers its `Run` button by forwarding the request to Jev with
-your key. The key is read from the environment, never from the page, never sent to the page and
-never logged, and the runner listens on the loopback address only.
+Open <http://localhost:4321> and press **Run**. `npm start` serves the page and forwards the request
+to Jev with your key.
 
-On the hosted page, Run explains this and offers **Paste a response** instead: run the request
-wherever you like (the Playground, dinostomp, curl), paste back what Jev answered, and it is
-recorded with the same statistics.
+- The key is read from the environment, or a `.env` beside the repo, on the server side only. It is
+  never sent to the page, never echoed back, never logged.
+- The runner listens on 127.0.0.1 and answers only its own page.
+- Never paste an API key into a web page, including this one. It does not ask for one.
 
-Every run is kept in your browser's local storage, up to 200 of them, and can be cleared per
-question in the panel.
+On the hosted page there is no runner, so Run says so and offers **Paste a response** instead: run
+the request wherever you like, paste back what Jev answered, and it is recorded the same way.
 
-## Your key
+Runs are kept in your browser's local storage, up to 200, and can be cleared per question.
 
-The page never asks for your TypeSafe key and never sends a request to Jev. The snippets it writes
-read the key from a `TYPESAFE_API_KEY` environment variable:
-
-```bash
-export TYPESAFE_API_KEY=...      # in your shell, or a .env your program loads
-python jev_request.py
-```
-
-Never paste an API key into a web page, including this one.
-
-## Layout
+## How it is put together
 
 | Path | What it is |
 | --- | --- |
 | `index.html` | The page: markup and the module that runs it. |
-| `jev-builder-core.js` | Everything that turns a draft into a request: the template catalogue, the generators for each output shape, validation, and the highlighter. No DOM. |
+| `jev-builder-core.js` | Everything that turns a draft into a request: the template catalogue, the generators for each output shape, validation, highlighting, and the statistics. No DOM. |
 | `styles.css` | The whole stylesheet, themed with custom properties. |
 | `tests/test_jev_workspace.mjs` | Behaviour tests against a DOM stub, run with `node --test`. |
 | `scripts/check-jev-builder.mjs` | Loads every template's check file with dinostomp's own loader. |
-| `scripts/serve.mjs` | The local server behind `npm start`. |
+| `scripts/serve.mjs` | The page server and the Jev runner behind `npm start`. |
 
 ## Development
 
 ```bash
-npm test                 # 12 behaviour tests, no dependencies
+npm test                 # behaviour tests, no dependencies
 npm run check:templates  # needs `pip install dinostomp` and python on PATH
 ```
 
 The tests read `index.html`, pull out its module and run it against a small DOM stub, so they cover
 what the page actually ships. `check:templates` writes each template's `.jev.yaml` and loads it with
-dinostomp, which is what catches a template that looks fine but would not run.
+dinostomp, which catches a template that looks fine but would not run.
 
 ## Security
 
 The page collects nothing and never holds your key; the runner keeps it on your machine, listens on
-loopback only, and answers just its own page. What it protects against, what it does not, and where
-to report a problem: [SECURITY.md](SECURITY.md).
+loopback only, and answers just its own page. What is protected, what is not, and where to report a
+problem: [SECURITY.md](SECURITY.md).
 
 ## Contributing
 

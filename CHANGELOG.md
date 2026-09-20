@@ -2,6 +2,13 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.18.0 (2026-09-19)
+
+### Changed
+- The README leads with why the tool exists: the escaping is mechanical busywork, and one answer
+  from a probabilistic judge says very little. It also says plainly what this is not, and points at
+  dinostomp for the work that needs a harness.
+
 ## v1.17.1 (2026-09-19)
 
 ### Changed

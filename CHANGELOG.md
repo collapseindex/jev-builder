@@ -2,6 +2,13 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.6.0 (2026-09-19)
+
+### Changed
+- Run and History sit in the middle of the top bar, with the runner's state and the draft note on
+  the right; the bar along the bottom is gone.
+- The theme toggle moves to the foot of the rail, and collapses to its icon with the rest.
+
 ## v1.5.0 (2026-09-19)
 
 ### Changed

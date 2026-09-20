@@ -30,14 +30,24 @@
 <body>
   <a class="skip" href="#main">Skip to builder</a>
   <div class="top">
-    <a href="https://collapseindex.org" class="wordmark">collapseindex<span>labs</span></a>
-    <span class="top-label">Tools <span aria-hidden="true">/</span> Jev builder</span>
-    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch color theme">Theme</button>
+    <div class="top-left">
+      <a href="https://collapseindex.org" class="wordmark">collapseindex<span>labs</span></a>
+      <span class="top-label">Tools <span aria-hidden="true">/</span> Jev builder</span>
+    </div>
+    <div class="top-center">
+      <button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button>
+      <button type="button" class="ghost" id="history-button" title="Every run kept in this browser">History</button>
+    </div>
+    <div class="top-right">
+      <span class="runner-state" id="runner-state"></span>
+      <p class="save-note" id="save-note" role="status">Draft stays in this browser</p>
+    </div>
   </div>
   <div class="shell">
   <aside class="rail" id="rail" aria-label="Actions">
     <button type="button" class="rail-toggle" id="rail-toggle" aria-expanded="true" aria-controls="templates" title="Collapse the actions"><span class="rail-chevron" aria-hidden="true">«</span><span class="rail-label">Actions</span></button>
     <div class="template-bar" id="templates"></div>
+    <button type="button" class="ghost rail-button theme-toggle" id="theme-toggle" aria-label="Switch color theme">Theme</button>
   </aside>
   <main class="workspace" id="main" tabindex="-1">
     <h1 class="sr-only">Jev workspace</h1>
@@ -53,12 +63,6 @@
         <p class="sr-only" id="preview-note"></p>
         <div id="preview-output"></div>
       </section>
-    </div>
-    <div class="action-bar">
-      <button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button>
-      <button type="button" class="ghost" id="history-button" title="Every run kept in this browser">History</button>
-      <span class="runner-state" id="runner-state"></span>
-      <p class="save-note" id="save-note" role="status">Draft stays in this browser</p>
     </div>
   </main>
   </div>
@@ -301,7 +305,8 @@
     function syncTheme() {
       const dark = document.documentElement.dataset.theme !== 'light';
       const button = document.getElementById('theme-toggle');
-      button.replaceChildren(icon(dark ? 'sun' : 'moon'), el('span', { text: dark ? 'Light mode' : 'Dark mode' }));
+      button.replaceChildren(icon(dark ? 'sun' : 'moon'), el('span', { class: 'rail-label', text: dark ? 'Light mode' : 'Dark mode' }));
+      button.title = dark ? 'Light mode' : 'Dark mode';
       button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to charcoal dark mode');
       document.querySelector('meta[name="theme-color"]').content = dark ? '#1c1c1e' : '#ffffff';
     }

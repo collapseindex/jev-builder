@@ -231,3 +231,16 @@ button.ghost.danger{color:var(--bad)}
 .rail-link:hover{background:var(--field);color:var(--text)}
 .rail-link>.icon{width:16px;height:16px}
 @media(max-width:900px){.rail-link{display:none}}
+
+.run-count{margin-left:2px}
+.run-count button{padding:5px 9px;font-size:11px;min-height:30px}
+.eval-expect{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+.eval-expect-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.eval-expect select{font-size:12px;min-height:30px;padding:4px 8px}
+.verdict{font-size:11px;font-weight:600;letter-spacing:.06em;border-radius:5px;padding:3px 8px}
+.verdict.pass{background:#2f6b3a22;color:#4caf6a;border:1px solid #4caf6a55}
+.verdict.fail{background:#a3342822;color:var(--bad);border:1px solid #a3342855}
+.verdict.mixed{background:#8a5a1222;color:#d8a54a;border:1px solid #d8a54a55}
+.eval-answer .verdict{margin-left:10px;vertical-align:middle}
+.eval-table td.ok{color:#4caf6a}
+.eval-table td.not-ok{color:var(--bad)}

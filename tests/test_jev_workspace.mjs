@@ -522,3 +522,41 @@ test('the evals follow the draft through a template change', () => {
   chips[labels.indexOf(firstKey)].events.click();
   assert.equal(app.get('eval-title').textContent.includes(firstKey), true);
 });
+
+test('an expectation turns runs into PASS or FAIL, and repeats are remembered', () => {
+  const app = workspace(new Map([[STORE, JSON.stringify(core.fromTemplate('urgent'))]]));
+  const key = JSON.parse(app.stored.get(STORE)).questions[0].key;
+  const paste = (noul) => {
+    app.get('run-button').events.click();
+    app.get('confirm-accept').events.click();
+    app.get('confirm-dialog').events.close();
+    app.get('paste-input').value = JSON.stringify({ answers: { [key]: { type: 'noul', noul } }, usage: {} });
+    app.get('paste-accept').events.click();
+  };
+  paste(0.9);                                     // yes
+  paste(0.2);                                     // no
+
+  const expect = find(app.get('eval-expect'), (node) => node.tag === 'select');
+  choose(expect, 'yes');
+  assert.equal(JSON.parse(app.stored.get(STORE)).questions[0].expect, 'yes');
+
+  const stat = (label) => app.get('eval-stats').children
+    .map((cell) => cell.children.map((part) => part.textContent))
+    .find(([name]) => name === label)?.[1];
+  assert.equal(stat('passed'), '1 of 2');
+  const verdict = find(app.get('eval-latest'), (node) => String(node.className).startsWith('verdict'));
+  assert.equal(verdict.textContent, 'FAIL');      // the last run answered no
+
+  // The expectation is a note to yourself: it changes nothing that is sent.
+  const request = core.requestBody(JSON.parse(app.stored.get(STORE)));
+  assert.equal(Object.values(request.questions)[0].expect, undefined);
+
+  assert.deepEqual(core.passRate([{ answer: 'yes' }, { answer: 'no' }], 'yes'), { passed: 1, n: 2, rate: 0.5 });
+  assert.equal(core.passRate([{ answer: 'yes' }], ''), null);
+  assert.deepEqual(core.answerOptions({ type: 'noul' }), ['yes', 'no']);
+  assert.deepEqual(core.answerOptions({ type: 'score', levels: ['a', 'b', 'c'] }), ['0', '1', '2']);
+
+  button(app.get('run-count'), '×3').events.click();
+  assert.equal(app.stored.get('jev-builder:run-count'), '3');
+  assert.equal(workspace(app.stored).get('run-count').children[1].attrs['aria-checked'], 'true');
+});

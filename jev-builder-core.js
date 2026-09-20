@@ -1417,3 +1417,19 @@ export function tally(rows) {
     .map(([answer, n]) => ({ answer, n, share: total ? n / total : 0 }))
     .sort((a, b) => b.n - a.n || a.answer.localeCompare(b.answer));
 }
+
+/** The answers a question can give, as the history records them. */
+export function answerOptions(question) {
+  if (!question) return [];
+  if (question.type === "noul") return ["yes", "no"];
+  if (question.type === "choice") return (question.options || []).map((o) => str(o.name).trim()).filter(Boolean);
+  return (question.levels || []).map((_, index) => String(index));
+}
+
+/** How many runs matched what you said you expected. */
+export function passRate(rows, expected) {
+  const answered = (rows || []).filter((row) => row && row.answer != null);
+  if (!expected || !answered.length) return null;
+  const passed = answered.filter((row) => String(row.answer) === String(expected)).length;
+  return { passed, n: answered.length, rate: passed / answered.length };
+}

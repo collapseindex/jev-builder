@@ -2,6 +2,16 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.15.0 (2026-09-19)
+
+### Added
+- An expectation per question: say what it should answer and each run reads PASS or FAIL, with a
+  passed tally in the figures and a tick or a cross on every row. It lives in the draft, not in the
+  request, so nothing about it is sent.
+- Run once, three times or ten from one press, remembered per browser, with the button turning into
+  Stop while a batch is under way.
+- `answerOptions` and `passRate` in the core module.
+
 ## v1.14.0 (2026-09-19)
 
 ### Security

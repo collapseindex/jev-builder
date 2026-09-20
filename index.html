@@ -78,8 +78,10 @@
           <nav id="eval-questions" class="eval-questions" aria-label="Questions with runs"></nav>
           <div class="eval-main">
             <h2 id="eval-title" class="sr-only">History</h2>
+            <div class="eval-expect" id="eval-expect"></div>
             <div class="eval-actions">
               <button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button>
+              <div class="run-count seg" role="radiogroup" aria-label="Runs per press" id="run-count"></div>
               <button type="button" class="ghost" id="eval-probe" title="Run the same request again with content-free changes">Robustness</button>
               <button type="button" class="ghost" id="eval-png">Save PNG</button>
               <button type="button" class="ghost danger" id="eval-clear">Clear</button>
@@ -848,28 +850,55 @@
       button.classList.toggle('waiting', !ready);
     }
 
+    const RUN_COUNTS = [1, 3, 10];
+    const RUN_COUNT_STORE = 'jev-builder:run-count';
+    let runCount = 1;
+    try {
+      const saved = Number(localStorage.getItem(RUN_COUNT_STORE));
+      if (RUN_COUNTS.includes(saved)) runCount = saved;
+    } catch { /* Once is the default. */ }
+    let stopRequested = false;
+
+    function renderRunCount() {
+      document.getElementById('run-count').replaceChildren(...RUN_COUNTS.map((times) =>
+        el('button', { type: 'button', role: 'radio', 'aria-checked': runCount === times ? 'true' : 'false',
+          class: runCount === times ? 'on' : '', text: '×' + times,
+          title: times === 1 ? 'One run per press' : `${times} runs per press`,
+          onclick: () => {
+            runCount = times;
+            try { localStorage.setItem(RUN_COUNT_STORE, String(times)); } catch { /* not kept */ }
+            renderRunCount();
+          } })));
+    }
+
+    /** One press, `runCount` runs, stoppable part way through. */
     async function runNow() {
       const button = document.getElementById('run-button');
+      if (button.dataset.running === 'yes') { stopRequested = true; return; }
       const issues = core.problems(model);
       if (issues.length) { note(`Finish the request first: ${issues[0]}`); return; }
       if (!runner.runner || !runner.keyed) { showRunHelp(); return; }
-      button.disabled = true;
-      button.textContent = 'Running';
+      stopRequested = false;
+      button.dataset.running = 'yes';
+      let done = 0;
+      let key = '';
       try {
-        const answer = await fetch('api/run', {
-          method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(core.requestBody(model)),
-        });
-        const payload = await answer.json().catch(() => ({}));
-        if (!answer.ok) throw new Error(payload.error || `the runner answered ${answer.status}`);
-        const added = recordResponse(payload.data, payload.ms, 'run');
-        if (!added.length) throw new Error('Jev answered, but not for these question names');
-        note(`Ran in ${payload.ms} ms`);
-        openEval(added[0].key);
-        renderEval();
+        for (let round = 0; round < runCount; round += 1) {
+          button.textContent = runCount > 1 ? `Stop (${round + 1} of ${runCount})` : 'Running';
+          const payload = await askJev(core.requestBody(model));
+          const added = recordResponse(payload.data, payload.ms, 'run');
+          if (!added.length) throw new Error('Jev answered, but not for these question names');
+          key = key || added[0].key;
+          done += 1;
+          openEval(key);
+          renderEval();
+          if (stopRequested) break;
+        }
+        note(done === 1 ? 'Ran once' : `Ran ${done} time${done === 1 ? '' : 's'}${stopRequested ? ', stopped' : ''}`);
       } catch (error) {
         note(error.message);
       } finally {
+        delete button.dataset.running;
         renderRunButton();
       }
     }
@@ -1026,6 +1055,8 @@
         ? `${latest.jev || 'jev'} · last run ${new Date(latest.at).toLocaleString()}`
         : '';
 
+      const question = model.questions.find((q) => text(q.key).trim() === evalKey);
+      renderExpect(question, rows);
       const latestBox = document.getElementById('eval-latest');
       if (!latest) {
         const inDraft = model.questions.some((q) => text(q.key).trim() === evalKey);
@@ -1036,6 +1067,7 @@
         document.getElementById('eval-history').replaceChildren();
         document.getElementById('eval-probes').replaceChildren();
         document.getElementById('eval-raw').replaceChildren();
+        document.getElementById('eval-stats').replaceChildren();
         drawChart([]);
         return;
       }
@@ -1044,7 +1076,9 @@
         el('p', { class: 'eval-question', text: latest.question || evalKey }),
         el('p', { class: 'eval-answer' },
           el('strong', { text: latest.type === 'score' ? fmt(latest.value) : latest.answer }),
-          el('span', { class: 'eval-sub', text: latest.type === 'score' ? ` of ${Math.max(0, entries.length - 1)}` : ` at ${percent(latest.p)}` })),
+          el('span', { class: 'eval-sub', text: latest.type === 'score' ? ` of ${Math.max(0, entries.length - 1)}` : ` at ${percent(latest.p)}` }),
+          question?.expect ? el('span', { class: 'verdict ' + (String(latest.answer) === String(question.expect) ? 'pass' : 'fail'),
+            text: String(latest.answer) === String(question.expect) ? 'PASS' : 'FAIL' }) : null),
         ...entries.map(([name, value]) => el('div', { class: 'eval-bar' },
           el('span', { class: 'eval-bar-label', text: labelFor(latest, name) }),
           el('span', { class: 'eval-bar-track' }, el('span', { class: 'eval-bar-fill', style: `width:${Math.max(0, Math.min(1, value)) * 100}%` })),
@@ -1052,8 +1086,10 @@
         el('p', { class: 'eval-sub', text: `confidence ${percent(latest.confidence)} · ${latest.ms == null ? '—' : latest.ms + ' ms'} · ${latest.inputTokens} in / ${latest.outputTokens} out · ${latest.source}` }));
 
       const cost = core.estimateCost(stats.inputTokens);
+      const expectation = question?.expect ? core.passRate(rows, question.expect) : null;
       const cells = [
         ['runs', String(stats.n) + (probeRows.length ? ` + ${probeRows.length} probes` : '')],
+        ...(expectation ? [['passed', `${expectation.passed} of ${expectation.n}`]] : []),
         ['most common', stats.modal ?? '—'],
         ['agreement', percent(stats.agreement)],
         ['mean', fmt(stats.mean)],
@@ -1070,7 +1106,7 @@
       document.getElementById('eval-history').replaceChildren(
         el('h3', { text: `every run (${rows.length})` }),
         el('table', { class: 'eval-table' },
-          el('thead', {}, el('tr', {}, ...['when', 'answer', 'p', 'conf', 'ms', 'tokens', 'from'].map((head) => el('th', { text: head })))),
+          el('thead', {}, el('tr', {}, ...['when', 'answer', 'p', 'conf', 'ms', 'tokens', 'from', ...(question?.expect ? ['ok'] : [])].map((head) => el('th', { text: head })))),
           el('tbody', {}, ...rows.slice().reverse().slice(0, 50).map((run) => el('tr', {},
             el('td', { text: new Date(run.at).toLocaleTimeString() }),
             el('td', { text: run.type === 'score' ? fmt(run.value) : run.answer }),
@@ -1078,7 +1114,9 @@
             el('td', { text: percent(run.confidence) }),
             el('td', { text: run.ms == null ? '—' : String(run.ms) }),
             el('td', { text: String((run.inputTokens || 0) + (run.outputTokens || 0)) }),
-            el('td', { text: run.source }))))));
+            el('td', { text: run.source }),
+            question?.expect ? el('td', { class: String(run.answer) === String(question.expect) ? 'ok' : 'not-ok',
+              text: String(run.answer) === String(question.expect) ? '✓' : '✗' }) : null)))));
       drawChart(rows);
       const lastPass = probeRows[probeRows.length - 1]?.pass || '';
       const passProbes = lastPass ? probeRows.filter((run) => run.pass === lastPass) : probeRows;
@@ -1101,6 +1139,32 @@
       box.replaceChildren(
         el('span', { class: 'eval-scope-note', text: `${shown} of ${total} runs match the request as it stands; the rest are from earlier edits.` }),
         chip('current', 'This request'), chip('all', 'All runs'));
+    }
+
+    /**
+     * An expectation is a note to yourself: say what this question should
+     * answer for the text in front of you, and every run says PASS or FAIL.
+     * It is part of the draft, not of the request, so it changes nothing that
+     * is sent.
+     */
+    function renderExpect(question, rows) {
+      const box = document.getElementById('eval-expect');
+      if (!question) { box.replaceChildren(); return; }
+      const options = core.answerOptions(question);
+      const select = el('select', { 'aria-label': 'Expected answer', onchange: (event) => {
+        question.expect = event.target.value;
+        changed(false);
+        renderEval();
+      } }, el('option', { value: '', text: 'no expectation', selected: !question.expect }),
+        ...options.map((name) => el('option', { value: name, text: name, selected: question.expect === name })));
+      const report = core.passRate(rows, question.expect);
+      const kids = [el('span', { class: 'eval-expect-label', text: 'I expect' }), select];
+      if (report) {
+        const all = report.passed === report.n;
+        kids.push(el('span', { class: 'verdict ' + (all ? 'pass' : report.passed ? 'mixed' : 'fail'),
+          text: all ? `PASS · ${report.n}/${report.n}` : `${report.passed} of ${report.n} passed` }));
+      }
+      box.replaceChildren(...kids);
     }
 
     /** What the probes did to the answer, worst first. */
@@ -1343,6 +1407,7 @@
     }
 
     document.getElementById('run-button').addEventListener('click', runNow);
+    renderRunCount();
     showPane('preview');                     // the markup's hidden attributes, set in one place
     document.getElementById('tab-preview').addEventListener('click', () => showPane('preview'));
     document.getElementById('tab-evals').addEventListener('click', () => openEval(evalKey || model.questions[0]?.key || ''));

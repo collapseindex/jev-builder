@@ -2,6 +2,14 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.12.2 (2026-09-19)
+
+### Changed
+- The selected Evals tab is white on a deeper blue in light mode, and dark on the pale blue in
+  charcoal, so the label stays readable either way.
+- The answer tally only appears when the answers actually differ. One bar at 100% said nothing, so
+  the spread takes that space instead.
+
 ## v1.12.1 (2026-09-19)
 
 ### Fixed

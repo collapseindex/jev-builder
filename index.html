@@ -1146,12 +1146,12 @@
       const barTop = pad + 14;
       const barHeight = 16;
       const gap = 8;
-      const shown = counts.slice(0, 4);
+      const shown = counts.length > 1 ? counts.slice(0, 4) : [];
       context.font = '12px ui-sans-serif, system-ui, sans-serif';
       context.textBaseline = 'middle';
       context.fillStyle = muted;
       context.font = '600 10px ui-sans-serif, system-ui, sans-serif';
-      context.fillText('ANSWERS', pad, pad);
+      if (shown.length) context.fillText('ANSWERS', pad, pad);
 
       shown.forEach((row, index) => {
         const y = barTop + index * (barHeight + gap);
@@ -1172,7 +1172,7 @@
 
       // The spread. The window is the runs themselves, widened a little, so a
       // tight cluster is readable; the ends say where that window sits.
-      const stripTop = barTop + shown.length * (barHeight + gap) + 24;
+      const stripTop = shown.length ? barTop + shown.length * (barHeight + gap) + 24 : pad + 20;
       const stripHeight = Math.max(34, rect.height - stripTop - 36);
       const left = pad + 8;
       const width = rect.width - left - pad - 8;

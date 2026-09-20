@@ -11,7 +11,7 @@ a{color:var(--accent);text-underline-offset:4px}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .skip{position:fixed;top:8px;left:8px;z-index:10;padding:12px;background:var(--field);transform:translateY(-160%)}
 .skip:focus{transform:none}
-.top{padding:6px 16px;display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;border-bottom:1px solid var(--rule)}.top-left,.top-right{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden}.top-center{display:flex;align-items:center;gap:8px;justify-self:center}.top-left>*,.top-right>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-right{justify-content:flex-end}.top-center #run-button{min-height:32px;padding:6px 20px}.top-center #history-button{min-height:32px}
+.top{padding:6px 16px;display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;border-bottom:1px solid var(--rule)}.top-left,.top-right{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden}.top-center{display:flex;align-items:center;gap:8px;justify-self:center}.top-left>*,.top-right>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-right{justify-content:flex-end}.top-center #run-button{min-height:32px;padding:6px 20px}
 .wordmark{font-weight:750;font-size:16px;letter-spacing:-.6px;color:var(--text);text-decoration:none;white-space:nowrap}
 .wordmark span{font-weight:400;color:var(--muted)}
 .top-label{font-size:12px;color:var(--muted);display:flex;gap:12px;align-items:center}

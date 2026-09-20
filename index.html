@@ -1167,21 +1167,27 @@
         el('option', { value: '', text: question.type === 'score' ? 'any level' : 'nothing in particular', selected: !rule.answer }),
         ...options.map((name) => el('option', { value: name, text: name, selected: rule.answer === name }))));
 
+      // Steps of a tenth, picked from a list: typing 0.83 was never the point.
+      const steps = (topValue) => {
+        const out = [];
+        for (let value = 0; value <= topValue + 1e-9; value += 0.1) out.push(Math.round(value * 10) / 10);
+        return out;
+      };
+      const chooser = (label, name, current, values, format) => [
+        el('span', { class: 'eval-expect-label', text: label }),
+        el('select', { 'aria-label': label, onchange: (event) => save({ [name]: event.target.value }) },
+          el('option', { value: '', text: 'any', selected: current == null }),
+          ...values.map((value) => el('option', { value: String(value), text: format(value),
+            selected: current != null && Math.abs(Number(current) - value) < 1e-9 }))),
+      ];
       if (question.type === 'score') {
-        // A rating is a position, so a range says more than a level does.
-        const topLevel = Math.max(0, (question.levels || []).length - 1);
-        const number = (label, name, value) => [
-          el('span', { class: 'eval-expect-label', text: label }),
-          el('input', { type: 'number', min: '0', max: String(topLevel), step: '0.1', value: value ?? '',
-            'aria-label': label, style: 'width: 84px',
-            oninput: (event) => save({ [name]: event.target.value }) }),
-        ];
-        kids.push(...number('and at least', 'min', rule.min), ...number('at most', 'max', rule.max));
+        const topLevel = Math.max(1, (question.levels || []).length - 1);
+        const levels = steps(topLevel);
+        kids.push(...chooser('and at least', 'min', rule.min, levels, (value) => value.toFixed(1)),
+          ...chooser('at most', 'max', rule.max, levels, (value) => value.toFixed(1)));
       } else {
-        kids.push(el('span', { class: 'eval-expect-label', text: 'and at least' }),
-          el('input', { type: 'number', min: '0', max: '1', step: '0.05', value: rule.minP ?? '',
-            'aria-label': 'Minimum probability', style: 'width: 84px', placeholder: 'any',
-            oninput: (event) => save({ minP: event.target.value }) }));
+        kids.push(...chooser('and at least', 'minP', rule.minP, steps(1).slice(1),
+          (value) => Math.round(value * 100) + '%'));
       }
 
       const report = core.passRate(rows, question.expect);

@@ -2,6 +2,12 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.16.1 (2026-09-19)
+
+### Changed
+- The thresholds are picked from a list in tenths (10% to 100%, or 0.0 to the top of a scale)
+  instead of typed into a number box.
+
 ## v1.16.0 (2026-09-19)
 
 ### Changed

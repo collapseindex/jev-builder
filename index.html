@@ -979,9 +979,13 @@
       if (paneMode !== 'evals') return;
       const keys = runKeys();
       document.getElementById('eval-questions').replaceChildren(...keys.map((key) => {
-        const count = runsFor(key).length;
-        return el('button', { type: 'button', class: key === evalKey ? 'on' : '', onclick: () => { evalKey = key; renderEval(); } },
-          el('span', { class: 'navlabel', text: key }), el('span', { class: 'badge', text: String(count) }));
+        const forKey = runsFor(key);
+        const plain = forKey.filter((run) => !run.probe).length;
+        const probed = forKey.length - plain;
+        return el('button', { type: 'button', class: key === evalKey ? 'on' : '',
+          title: probed ? `${plain} runs and ${probed} probe answers` : `${plain} runs`,
+          onclick: () => { evalKey = key; renderEval(); } },
+          el('span', { class: 'navlabel', text: key }), el('span', { class: 'badge', text: String(plain) }));
       }));
       const here = core.requestFingerprint(model);
       const everything = runsFor(evalKey);
@@ -1021,7 +1025,7 @@
 
       const cost = core.estimateCost(stats.inputTokens);
       const cells = [
-        ['runs', String(stats.n)],
+        ['runs', String(stats.n) + (probeRows.length ? ` + ${probeRows.length} probes` : '')],
         ['most common', stats.modal ?? '—'],
         ['agreement', percent(stats.agreement)],
         ['mean', fmt(stats.mean)],

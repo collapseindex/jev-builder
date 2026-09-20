@@ -2,6 +2,12 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.12.1 (2026-09-19)
+
+### Fixed
+- The question chip counted probe answers as runs, so it disagreed with the report. It counts runs
+  now, names both figures on hover, and the runs stat says "+ n probes" when a pass has been made.
+
 ## v1.12.0 (2026-09-19)
 
 ### Fixed

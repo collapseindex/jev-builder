@@ -1,6 +1,6 @@
 # jev-builder
 
-**v1.12.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.12.1** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
 A browser form for building requests to [TypeSafe's Jev](https://typesafe.ai). Pick a template,
 fill in the blanks, and copy a working request: for the Playground, for Python, or for the command

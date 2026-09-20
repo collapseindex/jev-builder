@@ -36,7 +36,6 @@
     </div>
     <div class="top-center">
       <button type="button" class="act" id="run-button" title="Checking for a local runner">Run</button>
-      <button type="button" class="ghost" id="history-button" title="Every run kept in this browser">History</button>
     </div>
     <div class="top-right">
       <p class="save-note" id="save-note" role="status">Draft stays in this browser</p>
@@ -57,10 +56,38 @@
         <section class="editor-panel" id="questions-panel" aria-label="Questions"></section>
       </div>
       <div class="splitter splitter-col" id="split-columns" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize the editors and preview" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50"></div>
-      <section class="preview-panel" aria-label="Live request preview">
-        <div class="panel-heading"><h2>Request preview</h2><span id="preview-help"></span><span class="token-count" id="token-count"></span><label class="sr-only" for="output-format">Output format</label><select id="output-format" aria-describedby="preview-note"></select></div>
+      <section class="preview-panel" aria-label="Request preview and evals">
+        <div class="panel-heading">
+          <div class="pane-tabs" role="tablist" aria-label="Right pane">
+            <button type="button" role="tab" id="tab-preview" aria-selected="true" aria-controls="preview-output">Request preview</button>
+            <button type="button" role="tab" id="tab-evals" aria-selected="false" aria-controls="eval-view">Evals</button>
+          </div>
+          <span id="preview-help"></span>
+          <span class="token-count" id="token-count"></span>
+          <div class="eval-actions" id="eval-actions" hidden>
+            <button type="button" class="ghost" id="eval-probe" title="Run the same request again with content-free changes">Robustness</button>
+            <button type="button" class="ghost" id="eval-paste">Paste a response</button>
+            <button type="button" class="ghost" id="eval-png">Save PNG</button>
+            <button type="button" class="ghost danger" id="eval-clear">Clear</button>
+          </div>
+          <label class="sr-only" for="output-format">Output format</label>
+          <select id="output-format" aria-describedby="preview-note"></select>
+        </div>
         <p class="sr-only" id="preview-note"></p>
         <div id="preview-output"></div>
+        <div id="eval-view" class="eval-view" role="tabpanel" aria-labelledby="tab-evals" hidden>
+          <nav id="eval-questions" class="eval-questions" aria-label="Questions with runs"></nav>
+          <div class="eval-main">
+            <h2 id="eval-title" class="sr-only">History</h2>
+            <p class="eval-sub" id="eval-meta"></p>
+            <div id="eval-latest" class="eval-latest"></div>
+            <div id="eval-stats" class="eval-stats"></div>
+            <div class="eval-chart-box"><canvas id="eval-chart" class="eval-chart" role="img" aria-label="Trend of this question's runs"></canvas></div>
+            <div id="eval-probes" class="eval-probes"></div>
+            <div id="eval-history" class="eval-history"></div>
+            <div id="eval-raw" class="eval-raw"></div>
+          </div>
+        </div>
       </section>
     </div>
   </main>
@@ -93,29 +120,6 @@
     <div class="dialog-actions">
       <button type="button" class="ghost" id="paste-cancel">Cancel</button>
       <button type="button" class="act" id="paste-accept">Record it</button>
-    </div>
-  </dialog>
-  <dialog id="eval-panel" class="eval-panel" aria-labelledby="eval-title">
-    <header class="eval-heading">
-      <div><h2 id="eval-title">History</h2><p class="eval-sub" id="eval-meta"></p></div>
-      <div class="eval-actions">
-        <button type="button" class="ghost" id="eval-probe" title="Run the same request again with content-free changes">Robustness</button>
-        <button type="button" class="ghost" id="eval-paste">Paste a response</button>
-        <button type="button" class="ghost" id="eval-png">Save PNG</button>
-        <button type="button" class="ghost danger" id="eval-clear">Clear history</button>
-        <button type="button" class="ghost" id="eval-close">Close</button>
-      </div>
-    </header>
-    <div class="eval-body">
-      <nav id="eval-questions" class="eval-questions" aria-label="Questions with runs"></nav>
-      <div class="eval-main">
-        <div id="eval-latest" class="eval-latest"></div>
-        <div id="eval-stats" class="eval-stats"></div>
-        <div class="eval-chart-box"><canvas id="eval-chart" class="eval-chart" role="img" aria-label="Trend of this question's runs"></canvas></div>
-        <div id="eval-probes" class="eval-probes"></div>
-        <div id="eval-history" class="eval-history"></div>
-        <div id="eval-raw" class="eval-raw"></div>
-      </div>
     </div>
   </dialog>
   <dialog id="template-library" class="template-library" aria-labelledby="library-title">
@@ -936,12 +940,24 @@
     });
 
     // --- the eval panel ----------------------------------------------------------
-    const evalPanel = document.getElementById('eval-panel');
+    let paneMode = 'preview';
+    function showPane(mode) {
+      paneMode = mode === 'evals' ? 'evals' : 'preview';
+      const evals = paneMode === 'evals';
+      document.getElementById('preview-output').hidden = evals;
+      document.getElementById('eval-view').hidden = !evals;
+      document.getElementById('eval-actions').hidden = !evals;
+      document.getElementById('output-format').hidden = evals;
+      document.getElementById('token-count').hidden = evals;
+      document.getElementById('preview-help').hidden = evals;
+      document.getElementById('tab-preview').setAttribute('aria-selected', evals ? 'false' : 'true');
+      document.getElementById('tab-evals').setAttribute('aria-selected', evals ? 'true' : 'false');
+      if (evals) renderEval();
+    }
     function openEval(key) {
       const keys = runKeys();
       evalKey = keys.includes(key) ? key : (keys[0] || '');
-      renderEval();
-      if (!evalPanel.open) evalPanel.showModal();
+      showPane('evals');
     }
     function fmt(value, digits = 2) { return value == null || !Number.isFinite(value) ? '—' : value.toFixed(digits); }
     function percent(value) { return value == null || !Number.isFinite(value) ? '—' : Math.round(value * 100) + '%'; }
@@ -951,6 +967,7 @@
     }
 
     function renderEval() {
+      if (paneMode !== 'evals') return;
       const keys = runKeys();
       document.getElementById('eval-questions').replaceChildren(...keys.map((key) => {
         const count = runsFor(key).length;
@@ -1207,8 +1224,9 @@
     }
 
     document.getElementById('run-button').addEventListener('click', runNow);
-    document.getElementById('history-button').addEventListener('click', () => openEval(model.questions[0]?.key || ''));
-    document.getElementById('eval-close').addEventListener('click', () => evalPanel.close());
+    showPane('preview');                     // the markup's hidden attributes, set in one place
+    document.getElementById('tab-preview').addEventListener('click', () => showPane('preview'));
+    document.getElementById('tab-evals').addEventListener('click', () => openEval(evalKey || model.questions[0]?.key || ''));
     document.getElementById('eval-png').addEventListener('click', saveChartPng);
     document.getElementById('eval-paste').addEventListener('click', () => pasteResponse());
     document.getElementById('eval-probe').addEventListener('click', runProbes);
@@ -1218,8 +1236,9 @@
         storeRuns();
         evalKey = runKeys()[0] || '';
         renderEval();
+        note('Cleared');
       }));
-    window.addEventListener('resize', () => { if (evalPanel.open) drawChart(runsFor(evalKey)); });
+    window.addEventListener('resize', () => { if (paneMode === 'evals') drawChart(runsFor(evalKey)); });
     checkRunner();
 
     // The rail collapses to its icons, and stays that way per browser.

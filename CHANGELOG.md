@@ -2,6 +2,14 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.9.0 (2026-09-19)
+
+### Changed
+- The runs move out of a dialog: the right pane now switches between Request preview and Evals, so
+  a question and what it answered sit side by side and a run never covers the draft. Run switches
+  the pane itself, Robustness, Paste a response, Save PNG and Clear live in the tab's heading, and
+  the History button is gone.
+
 ## v1.8.0 (2026-09-19)
 
 ### Added

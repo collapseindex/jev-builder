@@ -1129,7 +1129,7 @@
       const colour = (name, fallback) => (style.getPropertyValue(name) || fallback).trim() || fallback;
       const ink = colour('--text', '#f2f2f4');
       const muted = colour('--muted', '#a3a3ac');
-      const line = options.line || colour('--accent', '#e9e9ee');
+      const line = options.line || colour('--blue', '#4c8dff');
       const stats = core.summariseRuns(rows);
       const counts = core.tally(rows);
       const scoreScale = rows.find((row) => row.type === 'score');

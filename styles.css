@@ -157,7 +157,7 @@ button.ghost.danger{color:var(--bad)}
 .eval-bar{display:flex;align-items:center;gap:10px;margin:5px 0;font-size:12px}
 .eval-bar-label{flex:0 0 42%;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .eval-bar-track{flex:1;height:8px;background:var(--soft);border-radius:4px;overflow:hidden}
-.eval-bar-fill{display:block;height:100%;background:var(--accent)}
+.eval-bar-fill{display:block;height:100%;background:var(--blue)}
 .eval-bar-value{flex:0 0 44px;text-align:right;font-family:var(--mono);font-size:11px}
 .eval-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:14px 0}
 .eval-stat{display:flex;flex-direction:column;gap:3px}

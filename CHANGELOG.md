@@ -2,6 +2,13 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.11.1 (2026-09-19)
+
+### Changed
+- The spread strip zooms to the runs instead of the whole scale, labels both ends with where that
+  window sits, and stacks runs that land on the same spot, so twenty-five answers at 0.80 read as a
+  tight column rather than one smear.
+
 ## v1.11.0 (2026-09-19)
 
 ### Added

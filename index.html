@@ -1159,21 +1159,29 @@
         context.fillText(`${row.n} · ${Math.round(row.share * 100)}%`, trackLeft + trackWidth + 8, y + barHeight / 2);
       });
 
-      // The spread: one tick per run on the value axis, the mean, and ±1 sd.
-      const stripTop = barTop + shown.length * (barHeight + gap) + 22;
-      const stripHeight = Math.max(30, rect.height - stripTop - 34);
-      const left = pad + 34;
-      const width = rect.width - left - pad;
-      const x = (value) => left + (Math.max(0, Math.min(top, value)) / top) * width;
+      // The spread. The window is the runs themselves, widened a little, so a
+      // tight cluster is readable; the ends say where that window sits.
+      const stripTop = barTop + shown.length * (barHeight + gap) + 24;
+      const stripHeight = Math.max(34, rect.height - stripTop - 36);
+      const left = pad + 8;
+      const width = rect.width - left - pad - 8;
+      const margin = Math.max(stats.sd * 2.5, top * 0.02, 0.02);
+      let from = Math.max(0, stats.min - margin);
+      let to = Math.min(top, stats.max + margin);
+      if (to - from < 1e-6) { from = Math.max(0, from - 0.05); to = Math.min(top, to + 0.05); }
+      const span = to - from || 1;
+      const x = (value) => left + ((Math.max(from, Math.min(to, value)) - from) / span) * width;
+
       context.fillStyle = muted;
       context.font = '600 10px ui-sans-serif, system-ui, sans-serif';
-      context.fillText(scoreScale ? 'WHERE THE RUNS FELL ON THE SCALE' : 'HOW SURE, RUN BY RUN', pad, stripTop - 12);
+      context.textBaseline = 'middle';
+      context.fillText(scoreScale ? 'WHERE THE RUNS FELL' : 'HOW SURE, RUN BY RUN', pad, stripTop - 14);
 
       if (stats.sd > 0) {
         context.fillStyle = colour('--tint', '#303036');
-        const from = x(stats.mean - stats.sd);
-        const to = x(stats.mean + stats.sd);
-        context.fillRect(from, stripTop, Math.max(2, to - from), stripHeight);
+        const bandFrom = x(stats.mean - stats.sd);
+        const bandTo = x(stats.mean + stats.sd);
+        context.fillRect(bandFrom, stripTop, Math.max(2, bandTo - bandFrom), stripHeight);
       }
       context.strokeStyle = colour('--rule', '#38383d');
       context.lineWidth = 1;
@@ -1182,17 +1190,20 @@
       context.lineTo(left + width, stripTop + stripHeight + 0.5);
       context.stroke();
 
-      context.strokeStyle = line;
-      context.lineWidth = 2;
-      context.globalAlpha = rows.length > 20 ? 0.5 : 0.85;
+      // Runs that land on the same spot stack upwards instead of hiding.
+      const columns = new Map();
+      const dot = 4;
+      context.fillStyle = line;
       for (const value of stats.series) {
-        const at = Math.round(x(value)) + 0.5;
+        const at = Math.round(x(value));
+        const stacked = columns.get(at) || 0;
+        columns.set(at, stacked + 1);
+        const y = stripTop + stripHeight - dot - stacked * (dot + 1.5);
+        if (y < stripTop) continue;                       // a very tall stack stops at the top
         context.beginPath();
-        context.moveTo(at, stripTop + 4);
-        context.lineTo(at, stripTop + stripHeight - 4);
-        context.stroke();
+        context.arc(at + 0.5, y, dot / 2 + 0.5, 0, Math.PI * 2);
+        context.fill();
       }
-      context.globalAlpha = 1;
 
       context.strokeStyle = ink;
       context.setLineDash([3, 3]);
@@ -1202,15 +1213,20 @@
       context.stroke();
       context.setLineDash([]);
 
-      context.fillStyle = muted;
       context.font = '11px ui-monospace, Consolas, monospace';
       context.textBaseline = 'alphabetic';
-      context.fillText('0', left - 4, stripTop + stripHeight + 18);
-      const topLabel = top.toFixed(top >= 2 ? 0 : 2);
-      context.fillText(topLabel, left + width - context.measureText(topLabel).width, stripTop + stripHeight + 18);
-      const meanLabel = `mean ${stats.mean.toFixed(2)}${stats.sd > 0 ? ` ± ${stats.sd.toFixed(2)}` : ''} · ${rows.length} run${rows.length === 1 ? '' : 's'}`;
+      context.fillStyle = muted;
+      const digits = span < 0.2 ? 3 : 2;
+      context.fillText(from.toFixed(digits), left, stripTop + stripHeight + 18);
+      const toLabel = to.toFixed(digits);
+      context.fillText(toLabel, left + width - context.measureText(toLabel).width, stripTop + stripHeight + 18);
+      const scaleNote = scoreScale ? `window of the 0 to ${top.toFixed(0)} scale` : 'window of 0 to 1';
+      context.fillText(scaleNote, left + (width - context.measureText(scaleNote).width) / 2, stripTop + stripHeight + 18);
+
+      const meanLabel = `mean ${stats.mean.toFixed(digits)}${stats.sd > 0 ? ` ± ${stats.sd.toFixed(digits)}` : ''} · ${rows.length} run${rows.length === 1 ? '' : 's'}`;
       context.fillStyle = ink;
-      context.fillText(meanLabel, left + (width - context.measureText(meanLabel).width) / 2, stripTop - 12);
+      context.textBaseline = 'middle';
+      context.fillText(meanLabel, left + width - context.measureText(meanLabel).width, stripTop - 14);
       context.restore();
     }
 

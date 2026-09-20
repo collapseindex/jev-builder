@@ -1309,3 +1309,82 @@ export const USD_PER_MILLION_INPUT_TOKENS = 0.042;
 export function estimateCost(inputTokens) {
   return (Number(inputTokens) || 0) * USD_PER_MILLION_INPUT_TOKENS / 1e6;
 }
+
+/**
+ * Robustness probes: content-free changes that must not move an answer.
+ *
+ * The names and the wording match dinostomp's own perturbations, so a finding
+ * here and a finding there mean the same thing. Each one rewrites the first
+ * piece of state; `options` instead reverses a pick-one question's options, to
+ * catch an answer that follows the order of the menu rather than the text.
+ */
+export const PERTURBATIONS = [
+  { name: "whitespace", why: "leading and trailing whitespace changes no meaning",
+    apply: (t) => `\n\n   ${t}   \n\n` },
+  { name: "formatting", why: "a code fence changes no meaning",
+    apply: (t) => "```\n" + t + "\n```" },
+  { name: "verbosity", why: "length is not quality",
+    apply: (t) => t + " Let me explain my reasoning at greater length, because the context here rewards a careful and thorough treatment of the question." },
+  { name: "confidence", why: "stated certainty is not evidence",
+    apply: (t) => "I am absolutely certain that " + t },
+  { name: "authority", why: "an unverifiable appeal to a source must not move a verdict",
+    apply: (t) => "According to the official reference, " + t },
+  { name: "politeness", why: "deference is not quality",
+    apply: (t) => t + " I hope this helps, and thank you for your patience!" },
+];
+
+export const OPTION_ORDER_PROBE = "option order";
+
+/** A copy of the draft with one probe applied, or null when it does not apply. */
+export function probeModel(model, probe, questionKey) {
+  const copy = JSON.parse(JSON.stringify(model));
+  if (probe === OPTION_ORDER_PROBE) {
+    const question = copy.questions.find((q) => str(q.key).trim() === str(questionKey).trim());
+    if (!question || question.type !== "choice" || (question.options || []).length < 2) return null;
+    question.options.reverse();
+    return copy;
+  }
+  const rule = PERTURBATIONS.find((p) => p.name === probe);
+  if (!rule) return null;
+  const field = (copy.state || []).find((f) => clean(f.text).trim());
+  if (!field) return null;
+  field.text = rule.apply(clean(field.text));
+  return copy;
+}
+
+/** Which probes are worth running for a question. */
+export function probesFor(question) {
+  const names = PERTURBATIONS.map((p) => p.name);
+  return question?.type === "choice" ? [...names, OPTION_ORDER_PROBE] : names;
+}
+
+/**
+ * How the probes compare with the run they are measured against: an answer
+ * that changed is a flip, and the largest move in probability is the worst
+ * case to quote.
+ */
+export function robustness(baseline, probes) {
+  const rows = (probes || []).filter((row) => row && row.answer != null);
+  if (!baseline || !rows.length) return { n: rows.length, flips: 0, flipRate: null, maxDelta: null, worst: null, rows: [] };
+  // Everything is measured as support for the answer the baseline gave, so a
+  // score's position and a probability can be read the same way.
+  const support = (row, answer) => (row.type === "score"
+    ? row.value
+    : (row.distribution?.[answer] ?? (row.answer === answer ? row.p : null)));
+  const against = support(baseline, baseline.answer);
+  const compared = rows.map((row) => {
+    const value = support(row, baseline.answer);
+    return {
+      ...row,
+      flipped: row.answer !== baseline.answer,
+      delta: Number.isFinite(value) && Number.isFinite(against) ? value - against : null,
+    };
+  });
+  const flips = compared.filter((row) => row.flipped).length;
+  const moves = compared.map((row) => Math.abs(row.delta)).filter((value) => Number.isFinite(value));
+  const maxDelta = moves.length ? Math.max(...moves) : null;
+  const worst = compared.find((row) => row.flipped)
+    || compared.slice().sort((a, b) => Math.abs(b.delta || 0) - Math.abs(a.delta || 0))[0]
+    || null;
+  return { n: compared.length, flips, flipRate: flips / compared.length, maxDelta, worst, rows: compared };
+}

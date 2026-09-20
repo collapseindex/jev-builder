@@ -421,3 +421,32 @@ test('the action rail collapses and stays that way', () => {
   assert.equal(back.get('rail').classList.contains('closed'), true);
   assert.equal(back.get('rail-toggle').attrs['aria-expanded'], 'false');
 });
+
+test('probes change nothing that should matter, and are measured against a baseline', () => {
+  const model = core.fromTemplate('route');
+  const question = model.questions[0];
+  assert.deepEqual(core.probesFor(question).slice(-1), [core.OPTION_ORDER_PROBE]);
+  assert.equal(core.probesFor({ type: 'noul' }).includes(core.OPTION_ORDER_PROBE), false);
+
+  // A probe rewrites the state, or reverses the menu, and nothing else.
+  const spaced = core.probeModel(model, 'whitespace');
+  assert.equal(spaced.state[0].text.trim(), model.state[0].text.trim());
+  assert.notEqual(spaced.state[0].text, model.state[0].text);
+  assert.deepEqual(spaced.questions, model.questions);
+  const reversed = core.probeModel(model, core.OPTION_ORDER_PROBE, question.key);
+  assert.deepEqual(reversed.questions[0].options.map((o) => o.name),
+    question.options.map((o) => o.name).slice().reverse());
+  assert.equal(core.probeModel(model, 'no such probe'), null);
+  assert.equal(core.probeModel(core.fromTemplate('urgent'), core.OPTION_ORDER_PROBE, 'x'), null);
+
+  const baseline = { type: 'choice', answer: 'billing', p: 0.8, distribution: { billing: 0.8, technical: 0.2 } };
+  const report = core.robustness(baseline, [
+    { probe: 'whitespace', type: 'choice', answer: 'billing', p: 0.78, distribution: { billing: 0.78, technical: 0.22 } },
+    { probe: 'authority', type: 'choice', answer: 'technical', p: 0.6, distribution: { billing: 0.4, technical: 0.6 } },
+  ]);
+  assert.equal(report.flips, 1);
+  assert.equal(report.flipRate, 0.5);
+  assert.equal(Number(report.maxDelta.toFixed(2)), 0.4);
+  assert.equal(report.worst.probe, 'authority');
+  assert.deepEqual(core.robustness(null, []).rows, []);
+});

@@ -1,6 +1,6 @@
 # jev-builder
 
-**v1.7.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
+**v1.8.0** · [Open the tool](https://collapseindex.github.io/jev-builder/) · Apache-2.0
 
 A browser form for building requests to [TypeSafe's Jev](https://typesafe.ai). Pick a template,
 fill in the blanks, and copy a working request: for the Playground, for Python, or for the command
@@ -27,9 +27,15 @@ no framework: one HTML file, one stylesheet, one module.
 - **Save your own templates**: keep a draft under Your templates in the library, reopen it later,
   delete it when you are done. Kept in your browser only, never uploaded.
 - **Draggable splitters**, a charcoal or white theme, and your draft kept in your own browser.
-- **Run it and keep the runs**: Run sends the request through your own local runner, and the eval
-  panel keeps every run per question with distribution bars, agreement, mean, standard deviation,
-  spread, confidence, latency, tokens, an estimated cost, a trendline and a Save PNG button.
+- **Run it and keep the runs**: Run sends the request through your own local runner, and the
+  History panel keeps every run per question with distribution bars, agreement, mean, standard
+  deviation, spread, confidence, latency, tokens, an estimated cost, a trendline, the raw response
+  and a Save PNG button.
+- **Robustness probes**: run the same request again with changes that carry no meaning (spacing, a
+  code fence, filler, manufactured confidence, an appeal to authority, politeness, and for a
+  pick-one question the options reversed) and see which ones move the answer. The probes and their
+  names match [dinostomp](https://github.com/collapseindex/dinostomp), so a finding here means the
+  same thing there.
 - **A check file** for [dinostomp](https://github.com/collapseindex/dinostomp), so a question can be
   measured against examples you have labelled before you rely on it.
 

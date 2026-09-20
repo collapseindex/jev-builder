@@ -201,3 +201,8 @@ button.ghost.danger{color:var(--bad)}
 .top .save-note{margin:0}
 #run-button.waiting{background:transparent;color:var(--muted);border:1px solid var(--rule)}
 #run-button.waiting:hover{color:var(--text);border-color:var(--muted)}
+
+.eval-probes h3,.eval-raw h3{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.eval-table tr.flipped td{color:var(--bad)}
+.eval-raw-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.eval-raw .code-view{max-height:260px;border:1px solid var(--rule);border-radius:8px}

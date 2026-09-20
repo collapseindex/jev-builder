@@ -2,6 +2,20 @@
 
 All notable changes to jev-builder. Versions follow [semantic versioning](https://semver.org).
 
+## v1.8.0 (2026-09-19)
+
+### Added
+- Robustness: a fresh baseline and then one run per probe (whitespace, formatting, verbosity,
+  confidence, authority, politeness, and option order for a pick-one question), with a table of
+  which probes held and which flipped, how far support moved, and the worst case. The probe names
+  and wording match dinostomp's own perturbations.
+- The raw response under the history, coloured like the preview, with a copy button.
+- `PERTURBATIONS`, `probesFor`, `probeModel` and `robustness` in the core module.
+
+### Changed
+- Probe runs are kept out of the trendline and the run statistics, which stay about repeats of the
+  same request.
+
 ## v1.7.0 (2026-09-19)
 
 ### Changed
